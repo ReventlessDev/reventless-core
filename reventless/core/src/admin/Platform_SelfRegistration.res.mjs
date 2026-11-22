@@ -49,7 +49,28 @@ function selfServiceGroups(structures) {
   });
 }
 
-function fromStructures(structures) {
+function policyFields(structures) {
+  return Stdlib_Option.flatMap(marked(structures, "policy"), param => {
+    let d = param[1];
+    let plugin = param[0];
+    let commands = Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Array.findMap(structures, param => {
+      if (param[0] === plugin) {
+        return param[1];
+      }
+    }), s => s.stateChangeSlices.find(c => c.name === d.component)), [], c => c.commands);
+    let field = prefix => Stdlib_Option.map(commands.find(c => c.name.startsWith(prefix)), c => c.mutationField);
+    let match = field("Open");
+    let match$1 = field("Close");
+    if (match !== undefined && match$1 !== undefined) {
+      return {
+        open: match,
+        close: match$1
+      };
+    }
+  });
+}
+
+function fromStructures(structures, initially) {
   let match = doorField(structures, "start");
   let match$1 = doorField(structures, "complete");
   if (match !== undefined && match$1 !== undefined) {
@@ -57,7 +78,9 @@ function fromStructures(structures) {
       start: match,
       complete: match$1,
       roles: selfServiceGroups(structures),
-      openRoles: openRolesField(structures)
+      openRoles: openRolesField(structures),
+      initially: Admission$Reventless.initiallyName(initially),
+      policy: policyFields(structures)
     };
   }
 }
@@ -80,6 +103,19 @@ function toJson(c) {
   Stdlib_Option.forEach(c.openRoles, q => {
     entries["openRoles"] = q;
   });
+  entries["initially"] = c.initially;
+  Stdlib_Option.forEach(c.policy, p => {
+    entries["policy"] = Object.fromEntries([
+      [
+        "open",
+        p.open
+      ],
+      [
+        "close",
+        p.close
+      ]
+    ]);
+  });
   return entries;
 }
 
@@ -96,6 +132,7 @@ export {
   doorField,
   openRolesField,
   selfServiceGroups,
+  policyFields,
   fromStructures,
   toJson,
   configEntry,

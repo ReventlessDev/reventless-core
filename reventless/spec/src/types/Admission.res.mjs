@@ -9,7 +9,8 @@ let doors = [
   "start",
   "complete",
   "invite",
-  "openRoles"
+  "openRoles",
+  "policy"
 ];
 
 function doorName(door) {

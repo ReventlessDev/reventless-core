@@ -206,6 +206,10 @@ function Make(Platform) {
       CompleteRegistration$ReventlessRegistration.admissionDoor
     ],
     [
+      RegistrationPolicy$ReventlessRegistration.name,
+      RegistrationPolicy$ReventlessRegistration.admissionDoor
+    ],
+    [
       RegistrationWindows$ReventlessRegistration.name,
       RegistrationWindows$ReventlessRegistration.admissionDoor
     ],

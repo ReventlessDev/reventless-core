@@ -36,8 +36,10 @@ module type Declaration = {
 /**
 The part a slice plays in admission, declared on its spec as
 `let admissionDoor = Reventless.Admission.Start`: the inbound doors that start,
-complete and invite, and the one view (`OpenRoles`) that tells a visitor which
-self-service roles are open right now. The platform collects the marked slices
+complete and invite, the one view (`OpenRoles`) that tells a visitor which
+self-service roles are open right now, and the decision (`Policy`) an
+administrator opens and closes a role with: one command whose name starts with
+`Open`, one whose name starts with `Close`. The platform collects the marked slices
 into the shell's configuration, so nobody names a mutation or a query by hand,
 and the deploy check reads them: a role declared by invitation needs a door that
 invites.
@@ -47,9 +49,10 @@ type door =
   | @as("complete") Complete
   | @as("invite") Invite
   | @as("openRoles") OpenRoles
+  | @as("policy") Policy
 
 /** Every door, in declaration order: what `doorOfName` reads against. */
-let doors = [Start, Complete, Invite, OpenRoles]
+let doors = [Start, Complete, Invite, OpenRoles, Policy]
 
 /** The door's word, as a marked door's `part` carries it. */
 let doorName = (door: door): string => (door :> string)

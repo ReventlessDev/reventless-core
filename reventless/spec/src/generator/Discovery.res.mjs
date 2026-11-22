@@ -196,6 +196,9 @@ function scanAdmissionDoors(srcDir, discovered) {
     let match = d.componentType;
     let tmp;
     switch (match) {
+      case "StateChange" :
+        tmp = !d.stem.endsWith("_Decision");
+        break;
       case "StateView" :
       case "StateViewStream" :
         tmp = !d.stem.endsWith("_Projection");

@@ -65,6 +65,8 @@ let name = "RegistrationPolicy";
 
 let Id;
 
+let admissionDoor = "policy";
+
 let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/StateChange/RegistrationPolicy.res.mjs";
 
 let readConsistency = "EscalateOnRetry";
@@ -77,6 +79,7 @@ export {
   commandSchema,
   errorSchema,
   eventSchema,
+  admissionDoor,
   moduleUrl,
   authorizationOf,
   readConsistency,

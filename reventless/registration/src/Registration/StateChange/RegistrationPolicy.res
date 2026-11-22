@@ -56,3 +56,6 @@ type event =
   | RegistrationClosed({
       role: @s.matches(Reventless.DcbTag.mark(Reventless.Role.nameSchema)) Reventless.Role.name,
     })
+
+/** This decision opens and closes a role; the platform tells the shell so. */
+let admissionDoor = Reventless.Admission.Policy

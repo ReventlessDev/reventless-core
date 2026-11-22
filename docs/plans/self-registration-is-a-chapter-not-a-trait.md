@@ -783,6 +783,13 @@ existing commands; nothing new on the server.
 following the view); a live walk on the local platform closing and reopening `Shopper` and seeing
 the login page follow.
 
+*DW3 and DW4 as built, the platform's half (2026-11-22):* the `selfRegistration` key gains
+`initially` (`open` or `closed`, as the platform starts; the local platform writes its own) and
+`policy: {open, close}`, the two mutations of the slice marked `Reventless.Admission.Policy`:
+the command whose name starts with `Open` and the one whose name starts with `Close`, left out
+unless both are there. `RegistrationPolicy` marks itself, and the generator now reads the mark
+on a `StateChange/` spec too. The shell's half is built in `reventless-ui`.
+
 #### DW5: a narrow door for visitors on AWS
 
 The AWS adapter routes every `AllowAnonymous` field — the doors marked `Start` and `Complete`, and

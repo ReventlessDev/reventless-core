@@ -1903,6 +1903,7 @@ module MakeWithConfig = (
       )
       ReventlessCore.Platform_SelfRegistration.fromStructures(
         structures,
+        ~initially=LocalSelfRegistration.initially(),
       )->Option.forEach(selfRegistration =>
         ShellConfig.emit(
           ~dir=?hostUiDir,
