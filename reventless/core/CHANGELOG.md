@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.347 (2026-11-22)
+
+### Bug Fixes
+
+* **spec:** a limit with a fraction or a trailing word is refused ([94a019e](https://github.com/ReventlessDev/reventless-core/commit/94a019e0255c2c845c8bcec3e6445dac725487ff))
+### Features
+
+* **aws:** registration mail is capped per day, and an operator is told ([7d9c320](https://github.com/ReventlessDev/reventless-core/commit/7d9c3209ec5ef96bfd5948ebe2d9a2953f487958))
+* **aws:** the shell learns where to sign up from a file the plugin stack writes ([716638e](https://github.com/ReventlessDev/reventless-core/commit/716638e72d8e135e3c674d119f51beaf4ae7cdbf))
+* **registration:** a sign-up is checked for a person, with Cloudflare Turnstile on AWS ([e488649](https://github.com/ReventlessDev/reventless-core/commit/e48864909983219d18218b27ca40def8d96be4b3))
+* **registration:** the shell is told how a role starts, and how to open and close it ([4ce8b28](https://github.com/ReventlessDev/reventless-core/commit/4ce8b28967d90f918e97ea79800f8863b48cccbc))
+
+
 # 3.0.0-alpha.346 (2026-11-22)
 
 ### Bug Fixes

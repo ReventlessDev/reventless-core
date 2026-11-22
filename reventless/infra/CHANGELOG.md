@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.240 (2026-11-22)
+
+### Features
+
+* **registration:** a sign-up is checked for a person, with Cloudflare Turnstile on AWS ([e488649](https://github.com/ReventlessDev/reventless-core/commit/e48864909983219d18218b27ca40def8d96be4b3))
+
+
 # 3.0.0-alpha.239 (2026-11-22)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

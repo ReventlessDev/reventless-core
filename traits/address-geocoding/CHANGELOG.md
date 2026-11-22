@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.99 (2026-11-22)
+
+### Features
+
+* **aws:** a stash on DynamoDB, handed and granted where a slice declares it ([9d4ee19](https://github.com/ReventlessDev/reventless-core/commit/9d4ee19009be79c12530e095b13faf6ad7735232))
+* **registration:** a sign-up is checked for a person, with Cloudflare Turnstile on AWS ([e488649](https://github.com/ReventlessDev/reventless-core/commit/e48864909983219d18218b27ca40def8d96be4b3))
+
+
 # 1.0.0-alpha.98 (2026-11-22)
 
 **Note:** Version bump only for package @reventlessdev/trait-address-geocoding

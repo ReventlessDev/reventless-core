@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.46 (2026-11-22)
+
+### Features
+
+* **seed:** a play file's step can only read a row, as its person ([e31b32a](https://github.com/ReventlessDev/reventless-core/commit/e31b32a04458fe50b7aaab2abb67ddda68201292))
+* **seed:** a play step may meet what an earlier play made ([36ab045](https://github.com/ReventlessDev/reventless-core/commit/36ab0451d597ab1949f7d54225c97fba3e1d0c5b))
+
+
 # 1.0.0-alpha.45 (2026-11-22)
 
 ### Features
