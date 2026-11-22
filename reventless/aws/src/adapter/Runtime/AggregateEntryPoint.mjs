@@ -27,7 +27,12 @@ import { makeStorageOps } from "./AggregateEntryPoint_Ops.res.mjs";
 import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
-const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
+// A specifier may name one export after `#`: a module a plugin's file applies.
+const dynamicImport = async (specifier) => {
+  const [path, name] = specifier.split('#');
+  const module = await import('/var/task/node_modules/' + path);
+  return name ? module[name] : module;
+};
 
 // ---------------------------------------------------------------------------
 // Plugin status gate — mirrors CommandGeneratorResolvers_GraphQL.checkPluginStatus.

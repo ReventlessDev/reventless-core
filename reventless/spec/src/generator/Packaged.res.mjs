@@ -88,8 +88,14 @@ function isFunctorBody(path) {
   return Nodefs.readFileSync(path, "utf8").split("\n").some(line => line.startsWith("module Make = ("));
 }
 
+let fileUrlLine = `let packagedModuleUrl: string = %raw("import.meta.url")`;
+
+function applied(namespace, stem, declaration) {
+  return `module ` + stem + ` = {\n  include ` + namespace + `.` + stem + `.Make(` + declaration + `)\n  let moduleUrl = packagedModuleUrl ++ "#` + stem + `"\n}`;
+}
+
 function aliases(sources) {
-  return sources.flatMap(param => {
+  let lines = sources.flatMap(param => {
     let with_ = param.with_;
     let origin = param.origin;
     let alias = stem => `module ` + stem + ` = ` + origin.namespace + `.` + stem;
@@ -97,7 +103,7 @@ function aliases(sources) {
       let path = Discovery$Reventless.pathOf(d, origin.srcDir);
       if (isFunctorBody(path)) {
         if (with_ !== undefined) {
-          return alias(d.stem) + `.Make(` + with_ + `)`;
+          return applied(origin.namespace, d.stem, with_);
         } else {
           return Stdlib_JsError.throwWithMessage(`Generator: ` + origin.package + `'s ` + d.relPath + ` is applied to the app's declaration, but plugin.json's entry for it says no "with": name the module to apply it to.`);
         }
@@ -107,6 +113,11 @@ function aliases(sources) {
     }).concat(param.identities.map(alias)).toSorted(Primitive_string.compare);
     return [`// Slices from ` + origin.package].concat(modules);
   });
+  if (lines.some(l => l.includes(".Make("))) {
+    return [fileUrlLine].concat(lines);
+  } else {
+    return lines;
+  }
 }
 
 export {
@@ -115,6 +126,8 @@ export {
   namespaceOf,
   scan,
   isFunctorBody,
+  fileUrlLine,
+  applied,
   aliases,
 }
 /* node:fs Not a pure module */

@@ -2,6 +2,7 @@
 
 @val external uiBundleUrl: option<string> = "process.env.REGISTRATION_UI_BUNDLE_URL"
 
+let packagedModuleUrl: string = %raw("import.meta.url")
 // Slices from @reventlessdev/reventless-registration
 module CompleteRegistration = ReventlessRegistration.CompleteRegistration
 module CompleteRegistration_Translation = ReventlessRegistration.CompleteRegistration_Translation
@@ -9,17 +10,24 @@ module ContactAddressId = ReventlessRegistration.ContactAddressId
 module CreateRegisteredPrincipal = ReventlessRegistration.CreateRegisteredPrincipal
 module CreateRegisteredPrincipal_Translation = ReventlessRegistration.CreateRegisteredPrincipal_Translation
 module RegistrationPolicy = ReventlessRegistration.RegistrationPolicy
-module RegistrationPolicy_Decision = ReventlessRegistration.RegistrationPolicy_Decision.Make(
-  Admission,
-)
+module RegistrationPolicy_Decision = {
+  include ReventlessRegistration.RegistrationPolicy_Decision.Make(Admission)
+  let moduleUrl = packagedModuleUrl ++ "#RegistrationPolicy_Decision"
+}
 module RegistrationWindows = ReventlessRegistration.RegistrationWindows
 module RegistrationWindows_Projection = ReventlessRegistration.RegistrationWindows_Projection
 module Registrations = ReventlessRegistration.Registrations
-module Registrations_Decision = ReventlessRegistration.Registrations_Decision.Make(Admission)
+module Registrations_Decision = {
+  include ReventlessRegistration.Registrations_Decision.Make(Admission)
+  let moduleUrl = packagedModuleUrl ++ "#Registrations_Decision"
+}
 module SendRegistrationChallenge = ReventlessRegistration.SendRegistrationChallenge
 module SendRegistrationChallenge_Translation = ReventlessRegistration.SendRegistrationChallenge_Translation
 module SignUp = ReventlessRegistration.SignUp
-module SignUp_Translation = ReventlessRegistration.SignUp_Translation.Make(Admission)
+module SignUp_Translation = {
+  include ReventlessRegistration.SignUp_Translation.Make(Admission)
+  let moduleUrl = packagedModuleUrl ++ "#SignUp_Translation"
+}
 
 let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
   {

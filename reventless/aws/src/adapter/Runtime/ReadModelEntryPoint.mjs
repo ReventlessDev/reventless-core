@@ -18,7 +18,12 @@ import { Make as readModelCallbackMake } from "@reventlessdev/reventless-core/sr
 import * as StreamOps from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as Ops from "./ReadModelEntryPoint_Ops.res.mjs";
 
-const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
+// A specifier may name one export after `#`: a module a plugin's file applies.
+const dynamicImport = async (specifier) => {
+  const [path, name] = specifier.split('#');
+  const module = await import('/var/task/node_modules/' + path);
+  return name ? module[name] : module;
+};
 
 // Fix mappings module: ensure it has a `mappings` array
 function fixMappingsModule(mod) {

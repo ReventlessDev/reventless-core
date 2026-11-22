@@ -20,11 +20,61 @@ import * as CompleteRegistration_Translation$ReventlessRegistration from "@reven
 import * as CreateRegisteredPrincipal_Translation$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/CreateRegisteredPrincipal_Translation.res.mjs";
 import * as SendRegistrationChallenge_Translation$ReventlessRegistration from "@reventlessdev/reventless-registration/src/Registration/OutboundTranslation/SendRegistrationChallenge_Translation.res.mjs";
 
-let RegistrationPolicy_Decision = RegistrationPolicy_Decision$ReventlessRegistration.Make(Admission$RegistrationPlugin);
+let packagedModuleUrl = import.meta.url;
 
-let Registrations_Decision = Registrations_Decision$ReventlessRegistration.Make(Admission$RegistrationPlugin);
+let include = RegistrationPolicy_Decision$ReventlessRegistration.Make(Admission$RegistrationPlugin);
 
-let SignUp_Translation = SignUp_Translation$ReventlessRegistration.Make(Admission$RegistrationPlugin);
+let initialState = include.initialState;
+
+let evolve = include.evolve;
+
+let decide = include.decide;
+
+let moduleUrl = packagedModuleUrl + "#RegistrationPolicy_Decision";
+
+let RegistrationPolicy_Decision_Spec = include.Spec;
+
+let RegistrationPolicy_Decision = {
+  Spec: RegistrationPolicy_Decision_Spec,
+  initialState: initialState,
+  evolve: evolve,
+  decide: decide,
+  moduleUrl: moduleUrl
+};
+
+let include$1 = Registrations_Decision$ReventlessRegistration.Make(Admission$RegistrationPlugin);
+
+let initialState$1 = include$1.initialState;
+
+let evolve$1 = include$1.evolve;
+
+let decide$1 = include$1.decide;
+
+let moduleUrl$1 = packagedModuleUrl + "#Registrations_Decision";
+
+let Registrations_Decision_Spec = include$1.Spec;
+
+let Registrations_Decision = {
+  Spec: Registrations_Decision_Spec,
+  initialState: initialState$1,
+  evolve: evolve$1,
+  decide: decide$1,
+  moduleUrl: moduleUrl$1
+};
+
+let include$2 = SignUp_Translation$ReventlessRegistration.Make(Admission$RegistrationPlugin);
+
+let translate = include$2.translate;
+
+let moduleUrl$2 = packagedModuleUrl + "#SignUp_Translation";
+
+let SignUp_Translation_Spec = include$2.Spec;
+
+let SignUp_Translation = {
+  Spec: SignUp_Translation_Spec,
+  translate: translate,
+  moduleUrl: moduleUrl$2
+};
 
 let dcbSliceSchemas = [
   {
@@ -56,10 +106,10 @@ function Make(Platform) {
     traits: RegistrationPolicy$ReventlessRegistration.traits,
     readConsistency: RegistrationPolicy$ReventlessRegistration.readConsistency
   })({
-    initialState: RegistrationPolicy_Decision.initialState,
-    evolve: RegistrationPolicy_Decision.evolve,
-    decide: RegistrationPolicy_Decision.decide,
-    moduleUrl: RegistrationPolicy_Decision.moduleUrl
+    initialState: initialState,
+    evolve: evolve,
+    decide: decide,
+    moduleUrl: moduleUrl
   });
   let RegistrationsSlice = Platform.StateChangeSlice.Make({
     name: Registrations$ReventlessRegistration.name,
@@ -73,10 +123,10 @@ function Make(Platform) {
     traits: Registrations$ReventlessRegistration.traits,
     readConsistency: Registrations$ReventlessRegistration.readConsistency
   })({
-    initialState: Registrations_Decision.initialState,
-    evolve: Registrations_Decision.evolve,
-    decide: Registrations_Decision.decide,
-    moduleUrl: Registrations_Decision.moduleUrl
+    initialState: initialState$1,
+    evolve: evolve$1,
+    decide: decide$1,
+    moduleUrl: moduleUrl$1
   });
   let RegistrationWindowsStreamSlice = Platform.StateViewSliceStream.Make({
     name: RegistrationWindows$ReventlessRegistration.name,
@@ -159,8 +209,8 @@ function Make(Platform) {
     endpoint: undefined,
     capabilityNeeds: SignUp$ReventlessRegistration.capabilityNeeds
   })({
-    translate: SignUp_Translation.translate,
-    moduleUrl: SignUp_Translation.moduleUrl
+    translate: translate,
+    moduleUrl: moduleUrl$2
   });
   let pluginStructure = Platform.Plugin.makePluginDefinition("Registration", undefined, undefined, [RegistrationWindowsStreamSlice], [
     RegistrationPolicySlice,
@@ -270,6 +320,7 @@ let SendRegistrationChallenge_Translation;
 let SignUp;
 
 export {
+  packagedModuleUrl,
   CompleteRegistration,
   CompleteRegistration_Translation,
   ContactAddressId,
@@ -288,4 +339,4 @@ export {
   dcbSliceSchemas,
   Make,
 }
-/* RegistrationPolicy_Decision Not a pure module */
+/* packagedModuleUrl Not a pure module */

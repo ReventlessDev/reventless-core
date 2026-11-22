@@ -98,13 +98,25 @@ let isFunctorBody = (path: string): bool =>
   ->String.split("\n")
   ->Array.some(line => line->String.startsWith("module Make = ("))
 
+/** The line that names the generated file's own address, which an applied
+    module's `moduleUrl` is built from. */
+let fileUrlLine = `let packagedModuleUrl: string = %raw("import.meta.url")`
+
+/** An applied module, under its stem: the body applied to the declaration, with a
+    `moduleUrl` naming this file and the module in it. A deployed function imports a
+    slice's module by its `moduleUrl`, and the body's own file holds only `Make`. */
+let applied = (~namespace: string, ~stem: string, ~declaration: string): string =>
+  `module ${stem} = {\n  include ${namespace}.${stem}.Make(${declaration})\n  let moduleUrl = packagedModuleUrl ++ "#${stem}"\n}`
+
 /**
 The alias lines for every listed package: one per module the composition names,
 in a stable order. A functor-shaped body is applied to the module `with` names,
-and one with no `with` to apply it to is refused naming the file.
+and one with no `with` to apply it to is refused naming the file. Where any body
+is applied, the file's own address comes first.
 */
 let aliases = (sources: array<source>): array<string> =>
-  sources->Array.flatMap(({origin, ?with_, files, identities}) => {
+  sources
+  ->Array.flatMap(({origin, ?with_, files, identities}) => {
     let alias = stem => `module ${stem} = ${origin.namespace}.${stem}`
     let modules =
       files
@@ -112,7 +124,7 @@ let aliases = (sources: array<source>): array<string> =>
         let path = d->Discovery.pathOf(~srcDir=origin.srcDir)
         if isFunctorBody(path) {
           switch with_ {
-          | Some(declaration) => `${alias(d.stem)}.Make(${declaration})`
+          | Some(declaration) => applied(~namespace=origin.namespace, ~stem=d.stem, ~declaration)
           | None =>
             JsError.throwWithMessage(
               `Generator: ${origin.package}'s ${d.relPath} is applied to the app's declaration, but plugin.json's entry for it says no "with": name the module to apply it to.`,
@@ -126,3 +138,9 @@ let aliases = (sources: array<source>): array<string> =>
       ->Array.toSorted(String.compare)
     Array.concat([`// Slices from ${origin.package}`], modules)
   })
+  ->(
+    lines =>
+      lines->Array.some(l => l->String.includes(".Make("))
+        ? Array.concat([fileUrlLine], lines)
+        : lines
+  )

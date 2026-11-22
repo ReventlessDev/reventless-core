@@ -85,7 +85,10 @@ describe("a plugin composing slices from a package", () => {
 
   testSync("a body written as a functor is applied to the module `with` names", () =>
     expect(
-      has("module Policy_Decision = RegistrationSlices.Policy_Decision.Make(Admission)"),
+      has(
+        "module Policy_Decision = {\n  include RegistrationSlices.Policy_Decision.Make(Admission)\n  let moduleUrl = packagedModuleUrl ++ \"#Policy_Decision\"\n}",
+      ) &&
+      has(Packaged.fileUrlLine),
     )->toBe(true)
   )
 

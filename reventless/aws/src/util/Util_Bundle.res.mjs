@@ -17,6 +17,16 @@ let packageRootCache = {};
 let localRequire = Nodemodule.createRequire(import.meta.url);
 
 function getModuleSpecifier(importMetaUrl) {
+  let match = importMetaUrl.split("#");
+  if (match.length !== 2) {
+    return fileSpecifier(importMetaUrl);
+  }
+  let file = match[0];
+  let name = match[1];
+  return getModuleSpecifier(file) + "#" + name;
+}
+
+function fileSpecifier(importMetaUrl) {
   if (!importMetaUrl.startsWith("file://")) {
     return importMetaUrl;
   }
@@ -438,6 +448,7 @@ export {
   packageRootCache,
   localRequire,
   getModuleSpecifier,
+  fileSpecifier,
   extractPackageName,
   resolvePackageRoot,
   hashString,

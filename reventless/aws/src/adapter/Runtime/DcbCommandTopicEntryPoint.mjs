@@ -33,7 +33,12 @@ import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler, build
 import { admits as visitorAdmits, throttled as visitorThrottled } from "./VisitorLimit_Ops.res.mjs";
 import { makeDynamoQueryDbOps } from "./QueryDbEntryPoint_Ops.res.mjs";
 
-const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
+// A specifier may name one export after `#`: a module a plugin's file applies.
+const dynamicImport = async (specifier) => {
+  const [path, name] = specifier.split('#');
+  const module = await import('/var/task/node_modules/' + path);
+  return name ? module[name] : module;
+};
 
 // DISPATCH_MODE controls whether AppSync direct-invoke commands are run inline
 // (sync, default) or pushed to SQS for asynchronous processing (async).

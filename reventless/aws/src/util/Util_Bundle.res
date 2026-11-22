@@ -12,7 +12,14 @@ let localRequire: NodeModule.require = NodeModule.createRequire(%raw("import.met
  * Walks up from the file to find the nearest package.json, reads the package name,
  * and constructs the npm specifier from packageName + relative path.
  */
-let getModuleSpecifier = (importMetaUrl: string): string => {
+let rec getModuleSpecifier = (importMetaUrl: string): string =>
+  // `#Name` names one export of the file: a module a plugin's file applies.
+  switch importMetaUrl->String.split("#") {
+  | [file, name] => getModuleSpecifier(file) ++ "#" ++ name
+  | _ => fileSpecifier(importMetaUrl)
+  }
+
+and fileSpecifier = (importMetaUrl: string): string => {
   if !(importMetaUrl->String.startsWith("file://")) {
     importMetaUrl
   } else {

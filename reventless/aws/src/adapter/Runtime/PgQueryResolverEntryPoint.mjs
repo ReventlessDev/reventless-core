@@ -20,7 +20,12 @@ import { handler as dispatchHandler } from "@reventlessdev/reventless-aws/src/ad
 import { patchSpecId, log, runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
 import * as Ops from "./PgQueryResolverEntryPoint_Ops.res.mjs";
 
-const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
+// A specifier may name one export after `#`: a module a plugin's file applies.
+const dynamicImport = async (specifier) => {
+  const [path, name] = specifier.split('#');
+  const module = await import('/var/task/node_modules/' + path);
+  return name ? module[name] : module;
+};
 
 async function buildAllBindings() {
   // Runtime extension seam: any registered out-of-tree extension gets its

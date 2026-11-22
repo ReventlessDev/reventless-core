@@ -21,7 +21,12 @@ import { runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
+// A specifier may name one export after `#`: a module a plugin's file applies.
+const dynamicImport = async (specifier) => {
+  const [path, name] = specifier.split('#');
+  const module = await import('/var/task/node_modules/' + path);
+  return name ? module[name] : module;
+};
 
 // Absent whenever the config is full-key (tests, and any pre-split deployment),
 // which is why a missing file is not an error.
