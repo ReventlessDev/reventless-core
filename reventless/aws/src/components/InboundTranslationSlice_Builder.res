@@ -28,9 +28,10 @@ module Make = (
     // slice runs in has neither the capability settings nor the grants the
     // automation Lambda gets, so every call would answer `Unavailable` at run
     // time with nothing at deploy time to say why.
-    // A stash is the exception: the function is handed the platform's table and
-    // granted its two calls where a door declares it.
-    switch Spec.capabilityNeeds->Array.filter(need => need != Stash) {
+    // A stash and a person check are the exceptions: the function is handed the
+    // platform's table and granted its two calls where a door declares a stash,
+    // and the check's secret wherever the platform names one.
+    switch Spec.capabilityNeeds->Array.filter(need => need != Stash && need != PersonCheck) {
     | [] => ()
     | unmet =>
       JsError.throwWithMessage(
@@ -38,7 +39,7 @@ module Make = (
           ->Array.map(Reventless.CapabilityNeed.toString)
           ->Array.join(
             ", ",
-          )}) cannot be deployed to AWS yet — the DCB command Lambda it runs in is handed only a stash. Host it on the local platform.`,
+          )}) cannot be deployed to AWS yet — the DCB command Lambda it runs in is handed only a stash and a person check. Host it on the local platform.`,
       )
     }
     // Register spec + translation module paths so the shared DCB command Lambda's

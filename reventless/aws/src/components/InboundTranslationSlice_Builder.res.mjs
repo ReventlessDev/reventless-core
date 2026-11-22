@@ -20,9 +20,15 @@ function Make(Api) {
     capabilities: capabilities
   });
   let Make$1 = Spec => (Translation => {
-    let unmet = Spec.capabilityNeeds.filter(need => need !== "Stash");
+    let unmet = Spec.capabilityNeeds.filter(need => {
+      if (need !== "Stash") {
+        return need !== "PersonCheck";
+      } else {
+        return false;
+      }
+    });
     if (unmet.length !== 0) {
-      Stdlib_JsError.throwWithMessage(Spec.name + `: an inbound translation slice that declares capability needs (` + unmet.map(CapabilityNeed$Reventless.toString).join(", ") + `) cannot be deployed to AWS yet — the DCB command Lambda it runs in is handed only a stash. Host it on the local platform.`);
+      Stdlib_JsError.throwWithMessage(Spec.name + `: an inbound translation slice that declares capability needs (` + unmet.map(CapabilityNeed$Reventless.toString).join(", ") + `) cannot be deployed to AWS yet — the DCB command Lambda it runs in is handed only a stash and a person check. Host it on the local platform.`);
     }
     PluginRuntime_Builder$ReventlessAws.registerInboundTranslationSliceSpec(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Translation.moduleUrl), Spec.capabilityNeeds);
     let match = Spec.endpoint;
