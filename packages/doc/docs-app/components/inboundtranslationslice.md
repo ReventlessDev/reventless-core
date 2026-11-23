@@ -39,7 +39,7 @@ The anti-corruption layer protects the domain from external data formats and val
 
 ## Purpose and Responsibilities
 
-- **Responsibility**: Receive external input; validate against a schema; translate to domain commands via an anti-corruption layer; publish commands to the shared CommandTopic; maintain an audit log of all translation attempts
+- **Responsibility**: Receive external input; validate against a schema; translate to domain commands via an anti-corruption layer; publish commands to the shared CommandTopic; maintain an audit log of all translation attempts, except on a door open to visitors, whose requests are counted instead
 - **In**: External JSON input (via `operations.receive`)
 - **Out**: Commands to CommandTopic (via `publishJsons`); audit records to QueryDb
 - **Key Feature**: Unlike other slices, InboundTranslationSlice is triggered externally via `operations.receive` rather than by subscribing to domain events

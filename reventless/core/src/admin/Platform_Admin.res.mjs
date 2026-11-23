@@ -131,7 +131,10 @@ function Make(RuntimeEnvironment) {
         });
       }
       Object.entries(dcbResult.inboundTranslationSlicesOutputs).forEach(param => {
-        allQueryDbs[param[0]] = param[1].queryDb;
+        let k = param[0];
+        Stdlib_Option.forEach(param[1].queryDb, db => {
+          allQueryDbs[k] = db;
+        });
       });
       let eventLogEntriesFromAggregates = aggregates.map(M => ({
         busKey: M.Spec.name + "AggrEventLog",

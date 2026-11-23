@@ -431,7 +431,9 @@ module Make = (
     ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
     dcbResult.inboundTranslationSlicesOutputs
     ->Dict.toArray
-    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k ++ "Audit", v.queryDb))
+    ->Array.forEach(((k, v)) =>
+      v.queryDb->Option.forEach(db => allQueryDbs->Dict.set(k ++ "Audit", db))
+    )
     dcbResult.automationSlicesOutputs
     ->Dict.toArray
     ->Array.forEach(((k, v)) => {

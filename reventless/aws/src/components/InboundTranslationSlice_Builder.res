@@ -62,6 +62,7 @@ module Make = (
     module Translation = Translation
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
+    let audited = InnerMake.audited
 
     let make = (~publishJsons, ~publishJsonsAndWait=?, ~runtime=?, ~opts=?) => {
       let component = InnerMake.make(~publishJsons, ~publishJsonsAndWait?, ~runtime?, ~opts?)
@@ -71,7 +72,7 @@ module Make = (
       // point's Route 0 can persist the audit rows the in-process path writes inline.
       let outputs: ReventlessInfra.InboundTranslationSlice.outputs =
         component->ReventlessCore.Component.outputs
-      switch outputs.queryDb.resources->Array.get(0) {
+      switch outputs.queryDb->Option.flatMap(db => db.resources->Array.get(0)) {
       | Some(tableResource) =>
         PluginRuntime_Builder.registerInboundAuditTableName(~specName=Spec.name, tableResource.name)
       | None => ()

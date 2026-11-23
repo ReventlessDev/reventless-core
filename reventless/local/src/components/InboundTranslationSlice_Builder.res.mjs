@@ -37,6 +37,7 @@ function Make(Bus) {
       Spec: Spec,
       Translation: Translation,
       queryDbName: Inner.queryDbName,
+      audited: Inner.audited,
       make: make,
       operations: Component$ReventlessCore.operations
     };

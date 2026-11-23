@@ -303,7 +303,7 @@ module Make = (
     }
     dcbResult.inboundTranslationSlicesOutputs
     ->Dict.toArray
-    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
+    ->Array.forEach(((k, v)) => v.queryDb->Option.forEach(db => allQueryDbs->Dict.set(k, db)))
 
     // Wire subscription infrastructure (StateTopic) for admin RMs + DCB slices.
     // Mirrors Plugin_Builder's hook fire at Plugin_Builder.res:729 — gives the

@@ -201,8 +201,9 @@ export async function buildHandlersForConfig(config, opts = {}) {
     // is an object, and every PutCommand would crash in AWS endpoint resolution
     // ("value.split is not a function") — silently, since the audit save is
     // best-effort. Guard against that instead of trusting the config shape.
+    // `""` is a door that keeps no audit log (one open to visitors), not a fault.
     const hasAuditTable = typeof auditTableName === "string" && auditTableName.length > 0;
-    if (auditTableName != null && !hasAuditTable) {
+    if (auditTableName != null && typeof auditTableName !== "string") {
       log.warn(
         "inbound audit table name is not a string; skipping audit persistence: " +
           JSON.stringify(auditTableName),

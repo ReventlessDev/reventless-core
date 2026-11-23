@@ -128,11 +128,11 @@ function buildSliceHandler(spec, decision, scope, dcbEventLog) {
 }
 
 async function persistAudit(callback, auditQueryDbOps, result) {
+  let id = InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result);
+  let row = InboundTranslationSlice_Callback$ReventlessCore.takeAuditRow(callback.auditLog, id);
   if (auditQueryDbOps === undefined) {
     return;
   }
-  let id = InboundTranslationSlice_Callback$ReventlessCore.requestIdOf(result);
-  let row = InboundTranslationSlice_Callback$ReventlessCore.takeAuditRow(callback.auditLog, id);
   if (row === undefined) {
     return;
   }

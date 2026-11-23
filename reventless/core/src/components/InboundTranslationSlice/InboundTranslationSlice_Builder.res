@@ -1,5 +1,6 @@
 // InboundTranslationSlice builder — creates the audit log QueryDb and wires
-// the receive function that translates external input into domain commands.
+// the receive function that translates external input into domain commands. A
+// door open to visitors keeps no audit log: its requests are counted instead.
 //
 // Simpler than OutboundTranslationSlice — no EventCollector needed.
 // Triggered externally via operations.receive rather than by event subscription.
@@ -33,6 +34,11 @@ module Make = (
 
     let queryDbName = Spec.name ++ "Audit"
 
+    let audited = InboundTranslationSlice.keepsAudit(
+      ~commandSchema=Spec.commandSchema->S.castToUnknown,
+      ~authorizationOf=name => name->Spec.authorizationOf->Reventless.Authorization.named,
+    )
+
     // QueryDb for audit log — stores auditRow keyed by request ID
     module AuditQueryDbSpec = {
       module Id = Reventless.Id.String
@@ -55,16 +61,20 @@ module Make = (
 
     // Persist just this request's audit row, taking it out of the in-memory log
     // as it goes — see `takeAuditRow` for why draining the whole dict is wrong.
-    let syncToQueryDb = async (queryDbOps: SpecificQueryDb.operations, requestId: string) =>
-      switch Callback.auditLog->InboundTranslationSlice_Callback.takeAuditRow(requestId) {
-      | Some(row) =>
+    // Without a log the row is taken and dropped, so the dict does not grow.
+    let syncToQueryDb = async (queryDbOps: option<SpecificQueryDb.operations>, requestId: string) =>
+      switch (
+        Callback.auditLog->InboundTranslationSlice_Callback.takeAuditRow(requestId),
+        queryDbOps,
+      ) {
+      | (Some(row), Some(queryDbOps)) =>
         let _ = await queryDbOps.save(
           requestId->Reventless.Id.String.makeFromString,
           row,
           QueryDb.Overwrite,
           None,
         )
-      | None => ()
+      | _ => ()
       }
 
     let construct = (
@@ -75,12 +85,20 @@ module Make = (
     ) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
-      let queryDb = SpecificQueryDb.make(
-        ~api=Api.api(),
-        ~apiRole=Api.apiRole(),
-        ~owner={kind: ComponentType.InboundTranslationSlice, name: Spec.name},
-        ~opts,
-      )
+      let queryDb = audited
+        ? Some(
+            SpecificQueryDb.make(
+              ~api=Api.api(),
+              ~apiRole=Api.apiRole(),
+              ~owner={kind: ComponentType.InboundTranslationSlice, name: Spec.name},
+              ~opts,
+            ),
+          )
+        : None
+      let queryDbOps: Pulumi.Output.t<option<SpecificQueryDb.operations>> = switch queryDb {
+      | Some(db) => db->Component.operations->Pulumi.Output.apply(ops => Some(ops))
+      | None => Pulumi.Output.make(None)
+      }
 
       // Resolve publishJsons so it's available for receive
       let publishJsonsRef: ref<option<ReventlessInfra.CommandTopic.publishJsons>> = ref(None)
@@ -89,7 +107,7 @@ module Make = (
       })
 
       self->Component.setOperations(
-        (queryDb->Component.operations, publishJsons, publishJsonsAndWait)
+        (queryDbOps, publishJsons, publishJsonsAndWait)
         ->Pulumi.Output.all3
         ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn, publishJsonsAndWait)) => {
           let ops: InboundTranslationSlice.operations = {
@@ -117,7 +135,7 @@ module Make = (
 
       let outputs: InboundTranslationSlice.outputs = {
         resources: [],
-        queryDb: queryDb->Component.outputs,
+        queryDb: ?(queryDb->Option.map(Component.outputs)),
       }
       self->Component.setOutputs(outputs)
     }

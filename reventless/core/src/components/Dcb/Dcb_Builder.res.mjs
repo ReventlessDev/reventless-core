@@ -459,6 +459,9 @@ function Make(DcbEventLogStorage) {
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[O.queryDbName] = qn;
       });
       inboundTranslationSlices.forEach(I => {
+        if (!I.audited) {
+          return;
+        }
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, I.queryDbName, undefined);
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[I.queryDbName] = qn;
       });
@@ -599,7 +602,7 @@ function Make(DcbEventLogStorage) {
           return Effect.map(generateCommand(event), msgId => msgId);
         };
       });
-      let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources.concat(outputs.queryDb.resources)));
+      let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources.concat(Stdlib_Option.mapOr(outputs.queryDb, [], db => db.resources))));
       let asyncDcbResources = Object.values(asyncStateChangeSlicesOutputs).flatMap(outputs => outputs.resources);
       let exposedInbound = inboundTranslationSliceData.filter(param => param[4]);
       let inboundFieldNames = exposedInbound.map(param => param[1]);
@@ -745,7 +748,10 @@ function Make(DcbEventLogStorage) {
           connectionSpec: true
         };
       });
-      let inboundEntries = inboundTranslationSlices.map(I => {
+      let inboundEntries = Stdlib_Array.filterMap(inboundTranslationSlices, I => {
+        if (!I.audited) {
+          return;
+        }
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, I.queryDbName, undefined);
         return {
           singleFieldName: qn.singleFieldName,

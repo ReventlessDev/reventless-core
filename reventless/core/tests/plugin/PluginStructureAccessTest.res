@@ -174,6 +174,7 @@ module PsTwoRuleFeedSlice: ReventlessInfra.InboundTranslationSlice.T = {
     ReventlessInfra.InboundTranslationSlice.operations,
   >
   let queryDbName = "PsTwoRuleFeedAudit"
+  let audited = true
   let make = (
     ~publishJsons as _,
     ~publishJsonsAndWait as _=?,

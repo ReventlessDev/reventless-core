@@ -368,6 +368,9 @@ can see what the component is doing:
 | `<Slice>Audit` | an inbound translation | what it received, and what came of it |
 | `VisitorRequestCount` | a plugin with a door or view for visitors | how many requests visitors made, per minute and hour |
 
+An inbound translation whose door is open to visitors keeps no `<Slice>Audit`: how many
+requests it answers is set by whoever sends them, so the platform counts them instead.
+
 Each one has a list query, such as `Ordering_NotificationIntakeTodos`. These rows
 name your customers, your orders and the times your customers are written to, so
 **only operators may read them**: the callers on the elevated list described

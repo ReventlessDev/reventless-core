@@ -27,6 +27,7 @@ module Make = (Bus: LocalBus.T) => {
     module Translation = Translation
     type component = Inner.component
     let queryDbName = Inner.queryDbName
+    let audited = Inner.audited
     let make = (~publishJsons, ~publishJsonsAndWait=?, ~runtime=?, ~opts=?) => {
       let component = Inner.make(~publishJsons, ~publishJsonsAndWait?, ~runtime?, ~opts?)
       Spec.endpoint->Option.forEach(endpoint =>

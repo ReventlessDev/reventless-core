@@ -284,7 +284,10 @@ function Make(Spec) {
           allQueryDbs[param[0]] = param[1].queryDb;
         });
         Object.entries(dcbResult.inboundTranslationSlicesOutputs).forEach(param => {
-          allQueryDbs[param[0] + "Audit"] = param[1].queryDb;
+          let k = param[0];
+          Stdlib_Option.forEach(param[1].queryDb, db => {
+            allQueryDbs[k + "Audit"] = db;
+          });
         });
         Object.entries(dcbResult.automationSlicesOutputs).forEach(param => {
           let v = param[1];

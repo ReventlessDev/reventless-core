@@ -790,6 +790,7 @@ function MakeWithConfig(Config) {
       Spec: $$let.Spec,
       Translation: $$let.Translation,
       queryDbName: $$let.queryDbName,
+      audited: $$let.audited,
       make: $$let.make
     };
   });
@@ -2662,6 +2663,7 @@ function Make($star) {
       Spec: $$let.Spec,
       Translation: $$let.Translation,
       queryDbName: $$let.queryDbName,
+      audited: $$let.audited,
       make: $$let.make
     };
   });

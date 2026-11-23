@@ -792,10 +792,15 @@ module Make = (
         Plugin_Helpers.queryFieldNamesRegistry->Dict.set(O.queryDbName, qn)
       })
 
-      inboundTranslationSlices->Array.forEach((module(I: InboundTranslationSlice.T)) => {
-        let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=I.queryDbName)
-        Plugin_Helpers.queryFieldNamesRegistry->Dict.set(I.queryDbName, qn)
-      })
+      inboundTranslationSlices->Array.forEach((module(I: InboundTranslationSlice.T)) =>
+        if I.audited {
+          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(
+            ~plugin=name,
+            ~queryDbName=I.queryDbName,
+          )
+          Plugin_Helpers.queryFieldNamesRegistry->Dict.set(I.queryDbName, qn)
+        }
+      )
 
       // Create StateViewSlices
       let stateViewSlicesOutputs =
@@ -1073,7 +1078,9 @@ module Make = (
         stateChangeSlicesOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources),
         inboundTranslationSlicesOutputs
         ->Dict.valuesToArray
-        ->Array.flatMap(outputs => Array.concat(outputs.resources, outputs.queryDb.resources)),
+        ->Array.flatMap(outputs =>
+          Array.concat(outputs.resources, outputs.queryDb->Option.mapOr([], db => db.resources))
+        ),
       )
 
       // Resources the async Lambda needs access to
@@ -1343,22 +1350,27 @@ module Make = (
           }
         })
 
+      // A door open to visitors keeps no audit log, so it has no fields for one.
       let inboundEntries =
-        inboundTranslationSlices->Array.map((module(I: InboundTranslationSlice.T)) => {
-          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(
-            ~plugin=name,
-            ~queryDbName=I.queryDbName,
-          )
-          {
-            ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
-            listFieldName: qn.listFieldName,
-            returnTypeName: qn.returnTypeName,
-            stateSchema: InboundTranslationSlice_Callback.auditRowSchema->S.castToUnknown,
-            authorization: None,
-            permission: operators,
-            connectionSpec: true,
-          }
-        })
+        inboundTranslationSlices->Array.filterMap((module(I: InboundTranslationSlice.T)) =>
+          I.audited
+            ? {
+                let qn = Api_Naming.queryFieldNamesForSliceQueryDb(
+                  ~plugin=name,
+                  ~queryDbName=I.queryDbName,
+                )
+                Some({
+                  ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
+                  listFieldName: qn.listFieldName,
+                  returnTypeName: qn.returnTypeName,
+                  stateSchema: InboundTranslationSlice_Callback.auditRowSchema->S.castToUnknown,
+                  authorization: None,
+                  permission: operators,
+                  connectionSpec: true,
+                })
+              }
+            : None
+        )
 
       // Every event this plugin's slices produce lands in the one DCB event log,
       // so the log's schema entry is the union of all of them. Taking the first

@@ -2,11 +2,12 @@
 Deploy-time outputs produced when an `InboundTranslationSlice` is provisioned.
 
 - `resources` -- the underlying infrastructure
-- `queryDb` -- the DynamoDB table for the audit log
+- `queryDb` -- the table for the audit log; absent for a door open to visitors,
+  which keeps none
 */
 type outputs = {
   resources: array<Adapter.resource>,
-  queryDb: QueryDb.outputs,
+  queryDb?: QueryDb.outputs,
 }
 
 /**
@@ -84,6 +85,10 @@ module type T = {
   module Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string
+  /** Whether each request is kept in an audit log. Not for a door open to visitors:
+      how many requests it answers is set by whoever sends them, and the platform
+      counts them instead. */
+  let audited: bool
   let make: (
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     /** The target's publish that waits for each command's outcome, where its topic

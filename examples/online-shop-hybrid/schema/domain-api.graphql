@@ -1707,10 +1707,6 @@ type Query {
   Platform_UiFragments(after: String, before: String, filter: Platform_UiFragmentFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Platform_UiFragmentOrderBy): Platform_UiFragmentConnection!
   Platform_UiFragmentsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_UiFragment!]!
   Platform_UiFragmentsRefs(ids: [ID!]!): [Platform_UiFragmentRef!]!
-  Registration_CompleteRegistrationAudit(id: ID!, includeRetired: Boolean): Registration_CompleteRegistrationAudit
-  Registration_CompleteRegistrationAudits(after: String, before: String, filter: Registration_CompleteRegistrationAuditFilter, first: Int, includeRetired: Boolean, last: Int): Registration_CompleteRegistrationAuditConnection!
-  Registration_CompleteRegistrationAuditsByIds(ids: [String!]!, includeRetired: Boolean): [Registration_CompleteRegistrationAudit!]!
-  Registration_CompleteRegistrationAuditsRefs(ids: [ID!]!): [Registration_CompleteRegistrationAuditRef!]!
   Registration_CreateRegisteredPrincipalTodo(id: ID!, includeRetired: Boolean): Registration_CreateRegisteredPrincipalTodo
   Registration_CreateRegisteredPrincipalTodos(after: String, before: String, filter: Registration_CreateRegisteredPrincipalTodoFilter, first: Int, includeRetired: Boolean, last: Int): Registration_CreateRegisteredPrincipalTodoConnection!
   Registration_CreateRegisteredPrincipalTodosByIds(ids: [String!]!, includeRetired: Boolean): [Registration_CreateRegisteredPrincipalTodo!]!
@@ -1724,10 +1720,6 @@ type Query {
   Registration_SendRegistrationChallengeTodos(after: String, before: String, filter: Registration_SendRegistrationChallengeTodoFilter, first: Int, includeRetired: Boolean, last: Int): Registration_SendRegistrationChallengeTodoConnection!
   Registration_SendRegistrationChallengeTodosByIds(ids: [String!]!, includeRetired: Boolean): [Registration_SendRegistrationChallengeTodo!]!
   Registration_SendRegistrationChallengeTodosRefs(ids: [ID!]!): [Registration_SendRegistrationChallengeTodoRef!]!
-  Registration_SignUpAudit(id: ID!, includeRetired: Boolean): Registration_SignUpAudit
-  Registration_SignUpAudits(after: String, before: String, filter: Registration_SignUpAuditFilter, first: Int, includeRetired: Boolean, last: Int): Registration_SignUpAuditConnection!
-  Registration_SignUpAuditsByIds(ids: [String!]!, includeRetired: Boolean): [Registration_SignUpAudit!]!
-  Registration_SignUpAuditsRefs(ids: [ID!]!): [Registration_SignUpAuditRef!]!
   Registration_VisitorRequestCount(id: ID!, includeRetired: Boolean): Registration_VisitorRequestCount
   Registration_VisitorRequestCounts(after: String, before: String, filter: Registration_VisitorRequestCountFilter, first: Int, includeRetired: Boolean, last: Int): Registration_VisitorRequestCountConnection!
   Registration_VisitorRequestCountsByIds(ids: [String!]!, includeRetired: Boolean): [Registration_VisitorRequestCount!]!
@@ -1740,53 +1732,6 @@ type RegistrationEventLogEvent {
   eventType: String!
   payload: AWSJSON!
   position: String!
-}
-
-type Registration_CompleteRegistrationAudit implements Node {
-  _change: RowChange
-  caller: String
-  commandCount: Int
-  door: Registration_CompleteRegistrationAuditDoor
-  error: String
-  id: ID!
-  input: String!
-  receivedAt: String!
-  status: Registration_CompleteRegistrationAuditStatus!
-  targetIds: [ID!]
-}
-
-type Registration_CompleteRegistrationAuditConnection {
-  edges: [Registration_CompleteRegistrationAuditEdge!]!
-  pageInfo: PageInfo!
-}
-
-enum Registration_CompleteRegistrationAuditDoor {
-  Mutation
-  Webhook
-}
-
-type Registration_CompleteRegistrationAuditEdge {
-  cursor: String!
-  node: Registration_CompleteRegistrationAudit!
-}
-
-input Registration_CompleteRegistrationAuditFilter {
-  ids: [ID!]
-  search: String
-  searchPrefix: String
-}
-
-type Registration_CompleteRegistrationAuditRef {
-  id: ID!
-  image: String
-  label: String!
-  retired: Boolean!
-  retiredState: String
-}
-
-enum Registration_CompleteRegistrationAuditStatus {
-  Failure
-  Success
 }
 
 type Registration_CreateRegisteredPrincipalTodo implements Node {
@@ -1982,53 +1927,6 @@ enum Registration_SendRegistrationChallengeTodoStatus {
   Failed
   Pending
   Processing
-}
-
-type Registration_SignUpAudit implements Node {
-  _change: RowChange
-  caller: String
-  commandCount: Int
-  door: Registration_SignUpAuditDoor
-  error: String
-  id: ID!
-  input: String!
-  receivedAt: String!
-  status: Registration_SignUpAuditStatus!
-  targetIds: [ID!]
-}
-
-type Registration_SignUpAuditConnection {
-  edges: [Registration_SignUpAuditEdge!]!
-  pageInfo: PageInfo!
-}
-
-enum Registration_SignUpAuditDoor {
-  Mutation
-  Webhook
-}
-
-type Registration_SignUpAuditEdge {
-  cursor: String!
-  node: Registration_SignUpAudit!
-}
-
-input Registration_SignUpAuditFilter {
-  ids: [ID!]
-  search: String
-  searchPrefix: String
-}
-
-type Registration_SignUpAuditRef {
-  id: ID!
-  image: String
-  label: String!
-  retired: Boolean!
-  retiredState: String
-}
-
-enum Registration_SignUpAuditStatus {
-  Failure
-  Success
 }
 
 type Registration_VisitorRequestCount implements Node {

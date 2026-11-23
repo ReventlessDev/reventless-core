@@ -286,16 +286,18 @@ type inboundCallback = {
 external makeInboundCallback: specModule => translationModule => inboundCallback = "Make"
 
 // The request's audit row to its table, when one was threaded. A failed write is
-// logged, not raised: the commands are published.
+// logged, not raised: the commands are published. Without a table the row is taken
+// and dropped, so a warm function does not keep one per request.
 let persistAudit = async (
   callback: inboundCallback,
   auditQueryDbOps: option<ReventlessCore.QueryDb_Adapter.operations>,
   result: ReventlessInfra.InboundTranslationSlice.receiveResult,
-) =>
+) => {
+  let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+  let row = callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id)
   switch auditQueryDbOps {
   | Some(ops) =>
-    let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
-    switch callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
+    switch row {
     | Some(row) =>
       let json =
         row->Reventless.Util_Sury.toJson(
@@ -324,6 +326,7 @@ let persistAudit = async (
     }
   | None => ()
   }
+}
 
 // Builds the inbound receive handler: `receive` for the resolver's caller, then
 // the request's audit row. Answers the `commandOutcome` JSON the AppSync
