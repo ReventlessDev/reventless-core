@@ -199,7 +199,7 @@ Beyond the missing default-changing annotations, the current model leaves severa
 > derived dates (`entered<State>`, `entered<State>First`, `visits<State>`, `enteredCurrent`) get
 > `From`/`To` and sort for the states a view names in `@trail({index: […]})`, and the lifecycle
 > field gets `Eq` with an index sorted by when the row entered its state. See the plan
-> [state-entry dates a view can query](../plans/state-entry-dates-a-view-can-query.md) and the doc
+> [state-entry dates a view can query](../plans/done/state-entry-dates-a-view-can-query.md) and the doc
 > page's [Filtering and Sorting by a State's Date](../../packages/doc/docs-app/components/stateviewslice.md#filtering-and-sorting-by-a-states-date).
 > Ranges on declared fields are still open, as the first bullet says.
 

@@ -2,7 +2,7 @@
 
 > **Status:** Analysis · no implementation. Written 2026-11-21, read against the code on `alpha` the
 > same day. Its recommendations were taken the same day as the decisions of the plan
-> [state-entry dates a view can query](../plans/state-entry-dates-a-view-can-query.md). It takes up the question the
+> [state-entry dates a view can query](../plans/done/state-entry-dates-a-view-can-query.md). It takes up the question the
 > [lifecycle trail plan](../plans/done/lifecycle-trail-on-a-state-view.md) left open in its
 > [§7](../plans/done/lifecycle-trail-on-a-state-view.md#7-migration-in-the-shipped-examples): a
 > date that lives only in a trail cannot name, sort or range-filter rows. It extends the

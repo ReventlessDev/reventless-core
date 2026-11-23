@@ -1,9 +1,8 @@
 # Plan: state-entry dates a view can query
 
-> **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) and [QDS7](#4-steps) to
-> [QDS10](#4-steps) done; of [QDS6](#4-steps) one check is open, the request through the shop's
-> GraphQL on the `alpha` stack). Written 2026-11-21 from the analysis
-> [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
+> **Status:** Done 2026-11-23 ([QDS1](#4-steps) to [QDS10](#4-steps) done). Written 2026-11-21
+> from the analysis
+> [state-entry dates as queryable fields](../../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
 >
 > **Questions and short answers:**
@@ -21,11 +20,11 @@
 > 4. *What does it leave alone?* **The trail's shape and who writes it, business-time fields, and
 >    the shop's `placedAt`**, which stays until its orders have another name ([QDD6](#3-decisions)).
 >
-> **Relates to:** [the analysis](../analysis/state-entry-dates-as-queryable-fields.md) ·
-> [lifecycle-trail-on-a-state-view.md](../plans/done/lifecycle-trail-on-a-state-view.md) (done; its
-> [§7](../plans/done/lifecycle-trail-on-a-state-view.md#7-migration-in-the-shipped-examples) is the
+> **Relates to:** [the analysis](../../analysis/state-entry-dates-as-queryable-fields.md) ·
+> [lifecycle-trail-on-a-state-view.md](../../plans/done/lifecycle-trail-on-a-state-view.md) (done; its
+> [§7](../../plans/done/lifecycle-trail-on-a-state-view.md#7-migration-in-the-shipped-examples) is the
 > question this answers) ·
-> [the list ordering and filtering analysis](../analysis/autoui-list-ordering-and-filtering.md#richer-filter-primitives).
+> [the list ordering and filtering analysis](../../analysis/autoui-list-ordering-and-filtering.md#richer-filter-primitives).
 >
 > **Ids:** `QDD` (queryable dates, decision) in [§3](#3-decisions), `QDS` (step) in [§4](#4-steps).
 
@@ -48,16 +47,16 @@ and sorts by them, and a list of one state comes back ordered by how long its ro
 
 - The trail is appended in `Projection.applyOverlays`, from the envelope's time, on every write path:
   the local builders and callbacks, the deployed JSON path (`rewriteJsonAction`) and the AWS
-  state-view entry point ([Projection.res](../../reventless/core/src/Projection.res)). The same pass
+  state-view entry point ([Projection.res](../../../reventless/core/src/Projection.res)). The same pass
   composes `displayName`.
 - `QueryDb_Operations.injectCompositeIndexAttrs` already writes attributes the framework makes
   (`_pk`/`_sk` of a composite index) on every save
-  ([QueryDb_Operations.res](../../reventless/core/src/components/QueryDb/QueryDb_Operations.res)).
+  ([QueryDb_Operations.res](../../../reventless/core/src/components/QueryDb/QueryDb_Operations.res)).
 - `deriveServerCapability` builds the filter and sort surface from field annotations; a field with
   `range: true` gets `<f>From`/`<f>To`, today only `@subId` and `@compositeSubId`
-  ([GraphQL_FragmentGenerator.res](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res)).
+  ([GraphQL_FragmentGenerator.res](../../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res)).
   The SQLite resolver turns every filter field into one `WHERE` joined by `AND`, ranges included
-  ([QueryDbStorage_Sqlite.res](../../reventless/local/src/adapter/QueryDb/QueryDbStorage_Sqlite.res)).
+  ([QueryDbStorage_Sqlite.res](../../../reventless/local/src/adapter/QueryDb/QueryDbStorage_Sqlite.res)).
 - An `@index` becomes a DynamoDB GSI (`hashKey = idField ?? index`, `rangeKey = subIdField`);
   `indexConfig.derived` marks one the framework adds. Nothing counts GSIs against the cap of 20.
 
@@ -67,14 +66,14 @@ The analysis's recommendations, taken.
 
 | # | Question | Decision |
 |---|---|---|
-| **QDD1** | First or latest visit? | Both are derived. The unqualified name is the latest visit (`enteredPlaced`), which answers "since when in that state" for every state alike; the first visit is named (`enteredPlacedFirst`). From the analysis's [SEQ1](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD2** | Where is the opt-in written? | On the trail field: `@trail({index: [Placed, Shipped]})` puts those states' fields on the server and adds the lifecycle index; `@trail({index: true})` adds only the lifecycle index. (The analysis wrote `@trail(index=[…])` and a bare `@trail(index)`; neither parses as a ReScript attribute payload, so the record payload `@owner` and `@retired` already take is used, as [QDS3](#4-steps) allowed.) Deriving and reading need no annotation. [SEQ2](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD3** | Are durations stored? | No. A client computes them from the derived dates; a stored duration waits for an app that sorts by one. [SEQ3](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD4** | Rows stored before the change? | They are derived on their next write, and `pnpm run views:rederive` backfills every row from its trail, on a deployed stack's DynamoDB tables and on a local SQLite store ([QDS8](#4-steps)). [SEQ4](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD5** | Can a row be named by a derived date? | No. `@displayName` points at declared fields. [SEQ5](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD6** | A filter relative to now? | No new operator; a client sends an absolute bound. [SEQ6](../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
-| **QDD7** | How are they stored? | As synthetic top-level attributes: `_entered_<State>`, `_entered_<State>_first`, `_visits_<State>`, `_entered_current`. With them `_trail`, one value on every row whose trail has an entry, which the per-state indexes are keyed by ([QDS5](#4-steps)). Every backend can filter and index a top-level attribute. From the analysis's [SEF2](../analysis/state-entry-dates-as-queryable-fields.md#sef2-where-they-live-on-the-row). |
-| **QDD8** | What does the API call them? | Camel case without the underscore, in one table both the SDL and every resolver read: `enteredPlaced`, `enteredPlacedFirst`, `visitsPlaced`, `enteredCurrent`. Reading is an object beside the trail, `<trailField>Entered { placed { latest first visits } current }`. [SEF3](../analysis/state-entry-dates-as-queryable-fields.md#sef3-capability-and-the-graphql-surface). |
+| **QDD1** | First or latest visit? | Both are derived. The unqualified name is the latest visit (`enteredPlaced`), which answers "since when in that state" for every state alike; the first visit is named (`enteredPlacedFirst`). From the analysis's [SEQ1](../../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
+| **QDD2** | Where is the opt-in written? | On the trail field: `@trail({index: [Placed, Shipped]})` puts those states' fields on the server and adds the lifecycle index; `@trail({index: true})` adds only the lifecycle index. (The analysis wrote `@trail(index=[…])` and a bare `@trail(index)`; neither parses as a ReScript attribute payload, so the record payload `@owner` and `@retired` already take is used, as [QDS3](#4-steps) allowed.) Deriving and reading need no annotation. [SEQ2](../../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
+| **QDD3** | Are durations stored? | No. A client computes them from the derived dates; a stored duration waits for an app that sorts by one. [SEQ3](../../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
+| **QDD4** | Rows stored before the change? | They are derived on their next write, and `pnpm run views:rederive` backfills every row from its trail, on a deployed stack's DynamoDB tables and on a local SQLite store ([QDS8](#4-steps)). [SEQ4](../../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
+| **QDD5** | Can a row be named by a derived date? | No. `@displayName` points at declared fields. [SEQ5](../../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
+| **QDD6** | A filter relative to now? | No new operator; a client sends an absolute bound. [SEQ6](../../analysis/state-entry-dates-as-queryable-fields.md#5-open-questions). |
+| **QDD7** | How are they stored? | As synthetic top-level attributes: `_entered_<State>`, `_entered_<State>_first`, `_visits_<State>`, `_entered_current`. With them `_trail`, one value on every row whose trail has an entry, which the per-state indexes are keyed by ([QDS5](#4-steps)). Every backend can filter and index a top-level attribute. From the analysis's [SEF2](../../analysis/state-entry-dates-as-queryable-fields.md#sef2-where-they-live-on-the-row). |
+| **QDD8** | What does the API call them? | Camel case without the underscore, in one table both the SDL and every resolver read: `enteredPlaced`, `enteredPlacedFirst`, `visitsPlaced`, `enteredCurrent`. Reading is an object beside the trail, `<trailField>Entered { placed { latest first visits } current }`. [SEF3](../../analysis/state-entry-dates-as-queryable-fields.md#sef3-capability-and-the-graphql-surface). |
 | **QDD9** | When are they written? | On every write of a row with a trail, not only on a transition: they are a pure function of the trail, so recomputing is cheap, and a row whose typed state dropped the synthetic attributes on the way through an update gets them back. |
 | **QDD10** | What does a sort by a state's date do with a row that never entered the state? | Sorting or filtering by a state's date covers the rows that entered it; a row that never did is left out, on every backend, as the sparse index does. `enteredCurrent` covers every row with a trail. A count (`visits<State>`) compares as a number. |
 
@@ -178,7 +177,7 @@ Archived]})`: every state, since the first visit to `Listed` is when a row joine
 `placedAt` stays ([QDD5](#3-decisions)).
 *Done when* the shop's GraphQL answers "orders in Placed for more than three days, oldest first" on
 the local platform and on the `alpha` stack, where the seed's runs on several days spread the trails
-([online-shop-seed-over-days.md](done/online-shop-seed-over-days.md)).
+([online-shop-seed-over-days.md](online-shop-seed-over-days.md)).
 *Local half done* 2026-11-22. The three views carry the annotation; the GSIs per table are Orders 5
 (`_owner`, `_lifecycle`, `_entered_Placed`, `_entered_Shipped`, `_entered_Cancelled`), Products 5
 (`categoryId`, `_lifecycle`, `_entered_Listed`, `_entered_Archived`, `_entered_Discontinued`) and
@@ -195,14 +194,17 @@ second visit is not seen there.
 *On the `alpha` stack* 2026-11-22, after the backfill of [QDS8](#4-steps): a `Query` on Orders'
 lifecycle index for `Placed` with `_entered_current` older than three days returned, oldest first,
 `ord-011` (2026-09-17), `ord-20261107-r2-004` and `ord-20261107-r2-006` (2026-11-07). The per-state
-indexes held Placed 79, Shipped 54 and Cancelled 21. *Still open:* the same request through the
-shop's GraphQL on `alpha`, which needs a login.
+indexes held Placed 79, Shipped 54 and Cancelled 21.
+*Through GraphQL on `alpha`* 2026-11-22, signed in as an elevated caller from a client's list:
+one request with `filter: {lifecycleEq: "Placed", enteredCurrentTo: <three days back>}` and
+`orderBy: {field: enteredCurrent, direction: ASC}` returned the same three orders, 66 days and
+twice 15 days in Placed. *Done.*
 
 **QDS7 Docs.** The doc page's section
-[Recording When a Row Reached Each State](../../packages/doc/docs-app/components/stateviewslice.md#recording-when-a-row-reached-each-state)
+[Recording When a Row Reached Each State](../../../packages/doc/docs-app/components/stateviewslice.md#recording-when-a-row-reached-each-state)
 gains the derived fields, `@trail({index: …})` and the lifecycle index; the vocabulary reference the
 annotation; the list ordering analysis a pointer under
-[Richer filter primitives](../analysis/autoui-list-ordering-and-filtering.md#richer-filter-primitives).
+[Richer filter primitives](../../analysis/autoui-list-ordering-and-filtering.md#richer-filter-primitives).
 The docs also record a limit: each per-state index and each lifecycle state is one DynamoDB
 partition, so a view writing past a partition's throughput (about 1000 writes/s; throttling shows in
 CloudWatch) would need a shard count on `@trail`. Sharding keys the index by `hash(id) mod N`, a read
