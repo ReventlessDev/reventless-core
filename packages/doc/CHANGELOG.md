@@ -719,6 +719,11 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-11-23
+- feat(core)!: a door open to visitors keeps no audit log ([1ff2c23](https://github.com/ReventlessDev/reventless-core/commit/1ff2c23fca3b66479d76e2d4e92b24ad6f45e94a))
+- feat(core): a plugin with doors for visitors counts their requests in a view its operators read ([a8e7612](https://github.com/ReventlessDev/reventless-core/commit/a8e76126ed5d3476c09fdd3f2b4a51cc2288f6e0))
+- feat(local): the local platform limits visitors only where a limit is set ([c05ba3d](https://github.com/ReventlessDev/reventless-core/commit/c05ba3d79ab3088a87ee4a4de9d60e3c20fa159f))
+- feat(aws): a view for visitors has a limit of its own, and a door allows 20 an hour ([3eeef52](https://github.com/ReventlessDev/reventless-core/commit/3eeef52292be1c8f19598e84654cf59ca5389136))
+### 2026-11-23
 - fix(live): a live update carries a trail's dates as a read returns them ([83e857f](https://github.com/ReventlessDev/reventless-core/commit/83e857fb5fae64c869f7b4e973e47439b6b739a3))
 ### 2026-11-22
 - fix(aws): a fingerprint key too short to use is refused at the platform's deploy ([09d2e8a](https://github.com/ReventlessDev/reventless-core/commit/09d2e8a54dd6074d93a0212d834f52f46d4727d9))
