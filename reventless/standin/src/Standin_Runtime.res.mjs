@@ -51,7 +51,8 @@ function check(r, slices) {
   }
 }
 
-function send(r) {
+function send(r, collectOpt) {
+  let collect = collectOpt !== undefined ? collectOpt : param => {};
   return (kind, id, send) => {
     let work = async () => {
       let match = Standin_Doors$ReventlessStandin.find(r.doors, send.slice);
@@ -83,6 +84,7 @@ function send(r) {
           };
           r.recent = r.recent.concat([record]).slice(-200);
           r.onSent(record);
+          collect(record);
           if (answer.status >= 300 || answer.status === 0) {
             console.error(`[Standin] ` + kind + ` ` + id + `: ` + send.slice + ` answered ` + answer.status.toString() + ` ` + answer.body);
             return;
@@ -144,7 +146,7 @@ async function start(r) {
     let timer = param[0];
     return Nodetimers.setInterval(() => {
       if (r.running && !r.off.includes(kind.name)) {
-        kind.fire(timer, new Date(), send(r));
+        kind.fire(timer, new Date(), send(r, undefined));
         return;
       }
     }, Math.max(Seed_Pace$ReventlessSeed.realMs(r.speed, param[1]), 1));
@@ -167,16 +169,29 @@ async function stop(r) {
   await Promise.all(r.inFlight);
 }
 
-function byHand(r, kind, id, message, fieldsOpt) {
+async function byHand(r, kind, id, message, fieldsOpt) {
   let fields = fieldsOpt !== undefined ? fieldsOpt : ({});
   let k = r.kinds.find(k => k.name === kind);
-  if (k !== undefined) {
-    return k.byHand(id, message, fields, new Date(), send(r));
-  } else {
-    return Promise.resolve({
+  if (k === undefined) {
+    return {
       TAG: "Error",
       _0: `no kind ` + kind
-    });
+    };
+  }
+  let answers = [];
+  let why = await k.byHand(id, message, fields, new Date(), send(r, s => {
+    answers.push(s);
+  }));
+  if (why.TAG === "Ok") {
+    return {
+      TAG: "Ok",
+      _0: answers
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: why._0
+    };
   }
 }
 
@@ -190,7 +205,7 @@ function state(r) {
 function tell(r, kind, instance, message, body) {
   let k = r.kinds.find(k => k.name === kind);
   if (k !== undefined) {
-    return k.tell(instance, message, body, new Date(), send(r));
+    return k.tell(instance, message, body, new Date(), send(r, undefined));
   } else {
     return Promise.resolve({
       TAG: "NotReachable",

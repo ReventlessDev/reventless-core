@@ -198,18 +198,11 @@ let number = (d: dict<JSON.t>, k) => d->Dict.get(k)->Option.flatMap(JSON.Decode.
 let sendByHand = async (r: Standin.Runtime.t, d: dict<JSON.t>): (int, JSON.t) =>
   switch (field(d, "kind"), field(d, "id"), field(d, "message")) {
   | (Some(kind), Some(id), Some(message)) =>
-    let before = r->Standin.Runtime.recent->Array.length
     let fields =
       d->Dict.get("fields")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
     switch await r->Standin.Runtime.byHand(~kind, ~id, ~message, ~fields) {
     | Error(why) => (400, errorJson(why))
-    | Ok() =>
-      let answers =
-        r
-        ->Standin.Runtime.recent
-        ->Array.slice(~start=before)
-        ->Array.filter(s => s.kind == kind && s.id == id)
-      (
+    | Ok(answers) => (
         200,
         JSON.Encode.object(
           Dict.fromArray([("sent", answers->Array.map(sentJson)->JSON.Encode.array)]),

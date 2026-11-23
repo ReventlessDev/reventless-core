@@ -66,7 +66,9 @@ let check = (r: t, ~slices: array<string>): result<unit, string> =>
   | None => Ok()
   }
 
-let send = (r: t): Standin_Kind.sendTo =>
+/** Posts through the doors; `collect` also hears this call's records, which the
+    kept list cannot say once it is full and every new one pushes out the oldest. */
+let send = (r: t, ~collect: sent => unit=_ => ()): Standin_Kind.sendTo =>
   (~kind, ~id, send) => {
     let work = async () =>
       switch (
@@ -94,6 +96,7 @@ let send = (r: t): Standin_Kind.sendTo =>
           }
           r.recent = r.recent->Array.concat([record])->Array.slice(~start=-keep)
           r.onSent(record)
+          collect(record)
           if answer.status >= 300 || answer.status == 0 {
             Console.error(
               `[Standin] ${kind} ${id}: ${send.slice} answered ${answer.status->Int.toString} ${answer.body}`,
@@ -165,11 +168,29 @@ let stop = async (r: t): unit => {
   let _ = await Promise.all(r.inFlight)
 }
 
-/** Sends one of a kind's messages for one twin, now. */
-let byHand = (r: t, ~kind: string, ~id: string, ~message: string, ~fields=Dict.make()) =>
+/** Sends one of a kind's messages for one twin, now, and answers with what each
+    door said to it: this send's own posts, whatever the timers send meanwhile. */
+let byHand = async (
+  r: t,
+  ~kind: string,
+  ~id: string,
+  ~message: string,
+  ~fields=Dict.make(),
+): result<array<sent>, string> =>
   switch r.kinds->Array.find(k => k.name == kind) {
-  | None => Promise.resolve(Error(`no kind ${kind}`))
-  | Some(k) => k.byHand(~id, ~message, ~fields, ~now=Date.make(), send(r))
+  | None => Error(`no kind ${kind}`)
+  | Some(k) =>
+    let answers = []
+    switch await k.byHand(
+      ~id,
+      ~message,
+      ~fields,
+      ~now=Date.make(),
+      send(r, ~collect=s => answers->Array.push(s)),
+    ) {
+    | Ok() => Ok(answers)
+    | Error(why) => Error(why)
+    }
   }
 
 /** Every kind with its twins and their state. */

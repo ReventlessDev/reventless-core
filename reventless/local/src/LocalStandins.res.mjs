@@ -301,29 +301,22 @@ async function sendByHand(r, d) {
       errorJson("give kind, id and message")
     ];
   }
-  let before = Standin_Runtime$ReventlessStandin.recent(r).length;
   let fields = Stdlib_Option.getOr(Stdlib_Option.flatMap(d["fields"], Stdlib_JSON.Decode.object), {});
   let why = await Standin_Runtime$ReventlessStandin.byHand(r, match, match$1, match$2, fields);
-  if (why.TAG !== "Ok") {
+  if (why.TAG === "Ok") {
+    return [
+      200,
+      Object.fromEntries([[
+          "sent",
+          why._0.map(sentJson)
+        ]])
+    ];
+  } else {
     return [
       400,
       errorJson(why._0)
     ];
   }
-  let answers = Standin_Runtime$ReventlessStandin.recent(r).slice(before).filter(s => {
-    if (s.kind === match) {
-      return s.id === match$1;
-    } else {
-      return false;
-    }
-  });
-  return [
-    200,
-    Object.fromEntries([[
-        "sent",
-        answers.map(sentJson)
-      ]])
-  ];
 }
 
 function switchKind(r, d) {

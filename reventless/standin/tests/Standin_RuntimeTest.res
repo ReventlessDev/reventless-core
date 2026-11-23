@@ -94,14 +94,29 @@ describe("Standin.Runtime, against the fixture app:", () => {
         ~until=Date.now() +. 10_000.,
         ~what="bay-3 to meter",
       )
+      // What comes back is this send's own post, however many the timers made meanwhile:
+      // the kept list is full here, so each new post pushes out the oldest.
+      let filler: Standin.Runtime.sent = {
+        kind: "Charger",
+        id: "earlier",
+        slice: "",
+        body: JSON.Encode.null,
+        status: 200,
+        at: "",
+      }
+      runtime.recent = Array.make(~length=Standin.Runtime.keep, filler)
       expect(
-        await runtime->Standin.Runtime.byHand(
-          ~kind="Charger",
-          ~id="bay-1",
-          ~message="reading",
-          ~fields=Dict.fromArray([("energyWh", JSON.Encode.float(1.))]),
+        (
+          await runtime->Standin.Runtime.byHand(
+            ~kind="Charger",
+            ~id="bay-1",
+            ~message="reading",
+            ~fields=Dict.fromArray([("energyWh", JSON.Encode.float(1.))]),
+          )
+        )->Result.map(answers =>
+          answers->Array.map(s => (s.kind, s.id, s.status >= 200 && s.status < 300))
         ),
-      )->toEqual(Ok())
+      )->toEqual(Ok([("Charger", "bay-1", true)]))
       await runtime->Standin.Runtime.stop
 
       expect(sent->Array.length > 3)->toBe(true)
