@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.347 (2026-11-23)
+
+### Bug Fixes
+
+* **standin:** a send by hand answers with its own posts, however full the list of recent sends ([76db302](https://github.com/ReventlessDev/reventless-core/commit/76db302cfd00909204abe526b63e6137bfa5b1d7))
+
+
 # 3.0.0-alpha.346 (2026-11-23)
 
 * feat(core)!: a door open to visitors keeps no audit log ([1ff2c23](https://github.com/ReventlessDev/reventless-core/commit/1ff2c23fca3b66479d76e2d4e92b24ad6f45e94a))

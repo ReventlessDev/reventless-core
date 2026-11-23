@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.353 (2026-11-23)
+
+### Features
+
+* **spec:** energy is power held over time ([a3a0f54](https://github.com/ReventlessDev/reventless-core/commit/a3a0f54a729db884bbdeecd4371ed7b4be1b821c))
+
+
 # 3.0.0-alpha.352 (2026-11-23)
 
 * feat(core)!: a door open to visitors keeps no audit log ([1ff2c23](https://github.com/ReventlessDev/reventless-core/commit/1ff2c23fca3b66479d76e2d4e92b24ad6f45e94a))

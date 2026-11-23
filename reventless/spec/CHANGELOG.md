@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.215 (2026-11-23)
+
+### Features
+
+* **spec:** energy is power held over time ([a3a0f54](https://github.com/ReventlessDev/reventless-core/commit/a3a0f54a729db884bbdeecd4371ed7b4be1b821c))
+
+
 # 3.0.0-alpha.214 (2026-11-23)
 
 ### Bug Fixes
