@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-23
+- fix(live): a live update carries a trail's dates as a read returns them ([83e857f](https://github.com/ReventlessDev/reventless-core/commit/83e857fb5fae64c869f7b4e973e47439b6b739a3))
 ### 2026-11-22
 - fix(aws): a fingerprint key too short to use is refused at the platform's deploy ([09d2e8a](https://github.com/ReventlessDev/reventless-core/commit/09d2e8a54dd6074d93a0212d834f52f46d4727d9))
 - docs(guide): what a public sign-up needs on AWS, and how to make it real ([fb18d5d](https://github.com/ReventlessDev/reventless-core/commit/fb18d5ded42d7a1f8d83d42ceee3b1cf41b6d909))
