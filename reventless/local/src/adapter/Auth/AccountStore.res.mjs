@@ -82,6 +82,10 @@ function providedGroups() {
   return LocalAuth$ReventlessLocal.knownGroups().concat(resolved.contents ? [] : AccountsManifest$Reventless.declaredGroups());
 }
 
+function followsAbsentDefault(path) {
+  return Nodefs.existsSync(Nodepath.dirname(path));
+}
+
 function load(accounts, accountsFile, param) {
   if (pluginChecked.contents && (Stdlib_Option.isSome(accounts) || Stdlib_Option.isSome(accountsFile))) {
     Stdlib_JsError.throwWithMessage("AccountStore.load(~accounts / ~accountsFile) after a plugin was built — the check that every role it needs has a group read other accounts. Call AccountStore.load before deploying plugins.");
@@ -117,7 +121,9 @@ function load(accounts, accountsFile, param) {
       };
     });
   } else {
-    console.log("[LocalAuth] no accounts configured — POST /__inmemory/login will reject all. Provide ~accounts / ~accountsFile or create .reventless/accounts.yaml relative to cwd.");
+    console.log("[LocalAuth] no accounts configured — POST /__inmemory/login will reject all. " + (
+      Nodefs.existsSync(Nodepath.dirname(defaultPath)) ? defaultPath + ` will be read when it appears.` : "Provide ~accounts / ~accountsFile or create .reventless/accounts.yaml relative to cwd."
+    ));
     return {
       TAG: "Ok",
       _0: "Empty"
@@ -139,6 +145,7 @@ function reload(path) {
   dropped.forEach(username => LocalAuth$ReventlessLocal.Login.removeCredentials(username));
   _registerEntries(entries);
   fromFile.contents = names;
+  loadedFrom.contents = path;
   return {
     TAG: "Ok",
     _0: names.length.toString() + ` accounts` + (
@@ -232,10 +239,15 @@ function autoLoadOnce() {
     return;
   }
   let path = match._0;
-  if (typeof path !== "object") {
-    return;
-  } else {
+  if (typeof path === "object") {
     return watch(path._0);
+  }
+  if (path === "InlineAccounts") {
+    return;
+  }
+  let path$1 = AccountsManifest$Reventless.defaultPath();
+  if (Nodefs.existsSync(Nodepath.dirname(path$1))) {
+    return watch(path$1);
   }
 }
 
@@ -257,6 +269,7 @@ export {
   resetResolution,
   setLocale,
   providedGroups,
+  followsAbsentDefault,
   load,
   reload,
   unmetAfterReload,

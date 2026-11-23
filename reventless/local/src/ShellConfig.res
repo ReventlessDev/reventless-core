@@ -19,7 +19,8 @@
 //
 // The computed keys are the environment (always `local`), `manifestUrl` and the
 // journey map (from the bake declaration — local knows where it put the file),
-// `uiSlotsUrl` and `adminGroup`; the rest are the deployment's own `shellConfig`,
+// `uiSlotsUrl`, `signInNoticeUrl` (local only: the notice is followed from the
+// working directory) and `adminGroup`; the rest are the deployment's own `shellConfig`,
 // passed through verbatim. A `shellConfig` that names a computed key fails the
 // same way it does on AWS: a passthrough cannot redirect a key the platform
 // decides, and silently resolving it either way points the shell somewhere
@@ -49,6 +50,7 @@ let computedKeys = [
   "manifestUrl",
   journeyManifestsKey,
   ReventlessCore.Platform_UiSlots.configKey,
+  SignInNotice.configKey,
   ReventlessCore.Platform_AdminGroup.configKey,
   ReventlessCore.Platform_SelfRegistration.configKey,
 ]
@@ -63,6 +65,8 @@ let computedKeys = [
 let overlay = (
   ~bakedManifest: option<ReventlessInfra.Platform.bakedManifest>,
   ~uiSlotsFile: option<string>=?,
+  // The notice source `SignInNotice` follows; given, the shell is told where it is served.
+  ~signInNoticeFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
   // Read off the plugin structures once they have landed, so the first write
   // (from the declaration alone) omits it and the second carries it.
@@ -85,6 +89,13 @@ let overlay = (
       ReventlessCore.Platform_UiSlots.configKey,
       JSON.Encode.string(ReventlessCore.Platform_UiSlots.url),
     )
+  )
+
+  // Named while the source is followed, whether or not it exists yet: the page
+  // reads a missing file as no notice, and the key cannot follow a file that
+  // appears after the shell has booted.
+  signInNoticeFile->Option.forEach(_ =>
+    out->Dict.set(SignInNotice.configKey, JSON.Encode.string(SignInNotice.url))
   )
 
   ReventlessCore.Platform_AdminGroup.configEntry()->Option.forEach(((k, v)) => out->Dict.set(k, v))
@@ -168,13 +179,21 @@ let readObject = (~path: string, ~label: string): dict<JSON.t> =>
 let emit = (
   ~bakedManifest: option<ReventlessInfra.Platform.bakedManifest>,
   ~uiSlotsFile: option<string>=?,
+  ~signInNoticeFile: option<string>=?,
   ~shellConfig: option<dict<JSON.t>>,
   ~selfRegistration: option<ReventlessCore.Platform_SelfRegistration.config>=?,
   ~i18n: option<ReventlessInfra.Platform.i18n>=?,
   // The platform's chosen `assetsDir`; unset, the host-shell package's `dist/`.
   ~dir: option<string>=?,
 ) => {
-  let overlay = overlay(~bakedManifest, ~uiSlotsFile?, ~shellConfig, ~selfRegistration?, ~i18n?)
+  let overlay = overlay(
+    ~bakedManifest,
+    ~uiSlotsFile?,
+    ~signInNoticeFile?,
+    ~shellConfig,
+    ~selfRegistration?,
+    ~i18n?,
+  )
   let declared = overlay->Dict.keysToArray->Array.filter(k => !(environmentKeys->Array.includes(k)))
 
   switch switch dir {

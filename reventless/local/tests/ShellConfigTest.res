@@ -146,6 +146,40 @@ describe("ShellConfig.overlay — uiSlotsFile", () => {
   )
 })
 
+// The key that tells the sign-in page where the notice is served. Local only,
+// and named while the source is followed, whether or not it exists yet.
+describe("ShellConfig.overlay — signInNoticeFile", () => {
+  testSync("unset ⇒ no signInNoticeUrl", () => {
+    let out = ShellConfig.overlay(~bakedManifest=None, ~shellConfig=None)
+    expect(out->Dict.get("signInNoticeUrl")->Option.isNone)->toBe(true)
+  })
+
+  testSync("followed ⇒ the URL the notice is served from", () => {
+    let out = ShellConfig.overlay(
+      ~bakedManifest=None,
+      ~signInNoticeFile="/app/.reventless/sign-in-notice.json",
+      ~shellConfig=None,
+    )
+    expect(out->Dict.get("signInNoticeUrl"))->toEqual(
+      Some(JSON.Encode.string("/sign-in-notice.json")),
+    )
+  })
+
+  testSync("refuses a shellConfig key redirecting the notice", () =>
+    expect(
+      threw(
+        () =>
+          ShellConfig.overlay(
+            ~bakedManifest=None,
+            ~shellConfig=Some(
+              Dict.fromArray([("signInNoticeUrl", JSON.Encode.string("/elsewhere.json"))]),
+            ),
+          )->ignore,
+      ),
+    )->toBe(true)
+  )
+})
+
 describe("ShellConfig.emit", () => {
   let shipped = `{\n  "apiEndpoint": "/graphql",\n  "appName": "Shipped"\n}`
 

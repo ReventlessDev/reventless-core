@@ -10,6 +10,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ShellEnvironment$Reventless from "@reventlessdev/reventless-spec/src/types/ShellEnvironment.res.mjs";
 import * as Platform_I18n$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_I18n.res.mjs";
+import * as SignInNotice$ReventlessLocal from "./SignInNotice.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
 import * as Platform_AdminGroup$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminGroup.res.mjs";
@@ -39,15 +40,19 @@ let computedKeys = Belt_Array.concatMany([
     "manifestUrl",
     journeyManifestsKey,
     Platform_UiSlots$ReventlessCore.configKey,
+    SignInNotice$ReventlessLocal.configKey,
     Platform_AdminGroup$ReventlessCore.configKey,
     Platform_SelfRegistration$ReventlessCore.configKey
   ]
 ]);
 
-function overlay(bakedManifest, uiSlotsFile, shellConfig, selfRegistration, i18n) {
+function overlay(bakedManifest, uiSlotsFile, signInNoticeFile, shellConfig, selfRegistration, i18n) {
   let out = Object.fromEntries(ShellEnvironment$Reventless.configFields(ShellEnvironment$Reventless.local));
   Stdlib_Option.forEach(uiSlotsFile, param => {
     out[Platform_UiSlots$ReventlessCore.configKey] = Platform_UiSlots$ReventlessCore.url;
+  });
+  Stdlib_Option.forEach(signInNoticeFile, param => {
+    out[SignInNotice$ReventlessLocal.configKey] = SignInNotice$ReventlessLocal.url;
   });
   Stdlib_Option.forEach(Platform_AdminGroup$ReventlessCore.configEntry(), param => {
     out[param[0]] = param[1];
@@ -104,8 +109,8 @@ function readObject(path, label) {
   }
 }
 
-function emit(bakedManifest, uiSlotsFile, shellConfig, selfRegistration, i18n, dir) {
-  let overlay$1 = overlay(bakedManifest, uiSlotsFile, shellConfig, selfRegistration, i18n);
+function emit(bakedManifest, uiSlotsFile, signInNoticeFile, shellConfig, selfRegistration, i18n, dir) {
+  let overlay$1 = overlay(bakedManifest, uiSlotsFile, signInNoticeFile, shellConfig, selfRegistration, i18n);
   let declared = Object.keys(overlay$1).filter(k => !environmentKeys.includes(k));
   let dir$1 = dir !== undefined ? dir : HostShellDist$ReventlessLocal.dir();
   if (dir$1 === undefined) {

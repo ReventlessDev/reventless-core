@@ -327,4 +327,53 @@ describe("AccountStore.reload", () => {
     AccountStore.unwatch()
     expect(added)->toBe(true)
   })
+
+  testPromise("a default file written after the start is read once it appears", async () => {
+    resetAll()
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "reventless-appears-"]))
+    NodeFs.mkdirSync(NodePath.join([dir, ".reventless"]), {recursive: true})
+    let cwd = NodeProcess.cwd()
+    NodeProcess.chdir(dir)
+    // The path is fixed when the watch starts, so the run can leave the folder at once.
+    let path = try {
+      AccountStore.autoLoadOnce()
+      AccountStore._defaultPath()
+    } catch {
+    | exn =>
+      NodeProcess.chdir(cwd)
+      throw(exn)
+    }
+    NodeProcess.chdir(cwd)
+    expect(await signsIn(~username="late", ~password="late"))->toBe(false)
+    let save = () =>
+      NodeFs.writeFileSync(path, "- username: late\n  password: late\n  groups: [Driver]\n")
+    save()
+    let rec waitFor = async (tries: int) =>
+      if await signsIn(~username="late", ~password="late") {
+        true
+      } else if tries == 0 {
+        false
+      } else {
+        if mod(tries, 10) == 0 {
+          save()
+        }
+        await Promise.make((resolve, _) => setTimeout(() => resolve(), 50)->ignore)
+        await waitFor(tries - 1)
+      }
+    let added = await waitFor(60)
+    AccountStore.unwatch()
+    NodeFs.rmSync(dir, {recursive: true, force: true})
+    expect(added)->toBe(true)
+  })
+
+  testSync("a missing default file is not followed where there is no .reventless folder", () => {
+    resetAll()
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "reventless-nofolder-"]))
+    let cwd = NodeProcess.cwd()
+    NodeProcess.chdir(dir)
+    AccountStore.autoLoadOnce()
+    NodeProcess.chdir(cwd)
+    expect(NodeFs.existsSync(NodePath.join([dir, ".reventless"])))->toBe(false)
+    NodeFs.rmSync(dir, {recursive: true, force: true})
+  })
 })

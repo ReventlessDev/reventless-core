@@ -1875,6 +1875,9 @@ module MakeWithConfig = (
     let hostUiDir = HostShellDist.resolve(
       ~assetsDir=hostUiBundle->Option.flatMap(cfg => cfg.assetsDir),
     )
+    // The sign-in notice is followed only where there is a shell to serve it and
+    // a `.reventless` folder to read it from.
+    let signInNoticeFile = hostUiDir->Option.flatMap(_ => SignInNotice.followed())
     ShellConfig.emit(
       ~dir=?hostUiDir,
       ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
@@ -1882,6 +1885,7 @@ module MakeWithConfig = (
       // without the file is a 404 the shell survives quietly, and a file without
       // the key is a module nothing imports.
       ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+      ~signInNoticeFile?,
       ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
       ~i18n=?hostUiBundle->Option.flatMap(cfg => cfg.i18n),
     )
@@ -1909,6 +1913,7 @@ module MakeWithConfig = (
           ~dir=?hostUiDir,
           ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
           ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+          ~signInNoticeFile?,
           ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
           ~i18n=?hostUiBundle->Option.flatMap(cfg => cfg.i18n),
           ~selfRegistration,
@@ -1943,6 +1948,20 @@ module MakeWithConfig = (
       ~dir=?hostUiDir,
       ~onReload=LocalEvents_Server.broadcastUiSlotsChanged,
     )
+    // The notice the sign-in page shows. Served unconditionally, as it is also
+    // what removes a notice left from a run whose source has gone; then followed,
+    // with a signal on the events channel so an open sign-in page re-fetches it.
+    switch SignInNotice.emit(~source=SignInNotice.sourcePath(), ~dir=?hostUiDir) {
+    | Ok() => ()
+    | Error(e) => log.warn(~comp="SignInNotice", `${SignInNotice.fileName} was not served: ${e}`)
+    }
+    signInNoticeFile->Option.forEach(source => {
+      let _ = SignInNotice.watch(
+        ~source,
+        ~dir=?hostUiDir,
+        ~onReload=LocalEvents_Server.broadcastSignInNoticeChanged,
+      )
+    })
     // The app's own words, one merged catalogue per offered language, and the dev loop that
     // re-merges them when a translation is confirmed. Unconditional: it is also what removes the
     // catalogues of a platform that stopped declaring them.

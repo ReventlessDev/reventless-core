@@ -114,6 +114,15 @@ function broadcastUiSlotsChanged() {
     ]]));
 }
 
+let devSignInNoticeChannel = "/default/dev/signInNotice";
+
+function broadcastSignInNoticeChanged() {
+  broadcast(devSignInNoticeChannel, frame([[
+      "kind",
+      "signInNoticeChanged"
+    ]]));
+}
+
 function broadcastStateChange(name, descriptor) {
   let entityKey = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(descriptor), o => o["id"]), Stdlib_JSON.Decode.string), "");
   if (entityKey === "") {
@@ -376,6 +385,8 @@ export {
   broadcastUiHintsChanged,
   devUiSlotsChannel,
   broadcastUiSlotsChanged,
+  devSignInNoticeChannel,
+  broadcastSignInNoticeChanged,
   broadcastStateChange,
   decodeStringField,
   subscriptionLine,

@@ -100,6 +100,13 @@ makes it from). Never the working directory once another source was loaded.
 let providedGroups = (): array<string> =>
   LocalAuth.knownGroups()->Array.concat(resolved.contents ? [] : AccountsManifest.declaredGroups())
 
+/**
+Whether the default file is followed although it does not exist yet: when the
+folder it would be written to does. That folder is never created here, so a
+directory that has none (a test's) keeps none.
+*/
+let followsAbsentDefault = (path: string): bool => NodeFs.existsSync(NodePath.dirname(path))
+
 let load = (~accounts: option<array<entry>>=?, ~accountsFile: option<string>=?, ()): result<
   resolution,
   string,
@@ -136,7 +143,11 @@ let load = (~accounts: option<array<entry>>=?, ~accountsFile: option<string>=?, 
         })
       } else {
         Console.log(
-          "[LocalAuth] no accounts configured — POST /__inmemory/login will reject all. " ++ "Provide ~accounts / ~accountsFile or create .reventless/accounts.yaml relative to cwd.",
+          "[LocalAuth] no accounts configured — POST /__inmemory/login will reject all. " ++ (
+            followsAbsentDefault(defaultPath)
+              ? `${defaultPath} will be read when it appears.`
+              : "Provide ~accounts / ~accountsFile or create .reventless/accounts.yaml relative to cwd."
+          ),
         )
         Ok(Empty)
       }
@@ -162,6 +173,7 @@ let reload = (path: string): result<string, string> =>
     dropped->Array.forEach(username => LocalAuth.Login.removeCredentials(~username))
     _registerEntries(entries)
     fromFile := names
+    loadedFrom := Some(path)
     Ok(
       `${names->Array.length->Int.toString} accounts` ++ (
         dropped == [] ? "" : `, removed: ${dropped->Array.join(", ")}`
@@ -237,12 +249,19 @@ let watch = (path: string): unit => {
  * Idempotent auto-discovery. Platform.startServers calls this before
  * `DomainGraphQL_Server.start`, so a `.reventless/accounts.yaml` in cwd
  * hydrates the Login store automatically, and follows the file from then on.
+ * A default file that is missing is followed too when its `.reventless` folder
+ * exists, so one written after the start is read without a restart.
  * No-op once `load` has been called from anywhere.
  */
 let autoLoadOnce = (): unit =>
   if !resolved.contents {
     switch load() {
     | Ok(DefaultFile(path)) | Ok(AccountsFile(path)) => watch(path)
+    | Ok(Empty) =>
+      let path = _defaultPath()
+      if followsAbsentDefault(path) {
+        watch(path)
+      }
     | _ => ()
     }
   }

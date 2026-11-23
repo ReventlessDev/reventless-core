@@ -143,6 +143,20 @@ let broadcastUiSlotsChanged = (): unit =>
     ~event=frame([("kind", JSON.Encode.string("uiSlotsChanged"))]),
   )
 
+/** The channel the sign-in page listens on to learn that this platform re-served
+    its notice. Its own channel, as the slots have theirs: the listener is a
+    different page with a different thing to do about it. */
+let devSignInNoticeChannel = "/default/dev/signInNotice"
+
+/** Tell every connected page that `sign-in-notice.json` has been re-served, or
+    removed. Carries no text: the page re-fetches the file, so the two can never
+    disagree. */
+let broadcastSignInNoticeChanged = (): unit =>
+  broadcast(
+    ~channel=devSignInNoticeChannel,
+    ~event=frame([("kind", JSON.Encode.string("signInNoticeChanged"))]),
+  )
+
 /** LocalBus bridge: a Source B change descriptor becomes a publish on the
     same channel the AWS StateTopic Lambda would use. No-op without matching
     subscribers, so wiring order against server start doesn't matter. */
