@@ -68,20 +68,29 @@ function _signUpMode(cfg) {
   }
 }
 
-function anonymousRequestLimit() {
-  let raw = new Pulumi.Config("platform").get("anonymousRequestLimit");
+function anonymousLimit(kind) {
+  let key = AnonymousRequestLimit$Reventless.configKeyOf(kind);
+  let raw = new Pulumi.Config("platform").get(key);
   if (raw === undefined) {
     return "";
   }
   if (raw === "") {
     return "";
   }
-  let limit = AnonymousRequestLimit$Reventless.parse(raw);
+  let limit = AnonymousRequestLimit$Reventless.parse(kind, raw);
   if (limit.TAG === "Ok") {
     return AnonymousRequestLimit$Reventless.toString(limit._0);
   } else {
-    return Stdlib_JsError.throwWithMessage(`platform:anonymousRequestLimit: "` + raw + `" is not a limit — write requests/seconds, such as ` + AnonymousRequestLimit$Reventless.toString(AnonymousRequestLimit$Reventless.default));
+    return Stdlib_JsError.throwWithMessage(`platform:` + key + `: "` + raw + `" is not a limit — write requests/seconds, such as ` + AnonymousRequestLimit$Reventless.toString(AnonymousRequestLimit$Reventless.defaultOf(kind)));
   }
+}
+
+function anonymousRequestLimit() {
+  return anonymousLimit("Door");
+}
+
+function anonymousViewLimit() {
+  return anonymousLimit("View");
 }
 
 function selfRegistrationInitially() {
@@ -264,7 +273,8 @@ function _resolveUncached() {
   Pulumi$Pulumi.$$export("activeRoleStore", result.activeRoleTable.name);
   Pulumi$Pulumi.$$export("identityStore", result.identityTable.name);
   Pulumi$Pulumi.$$export("identityStoreArn", result.identityTable.arn);
-  Pulumi$Pulumi.$$export("anonymousRequestLimit", Pulumi.output(anonymousRequestLimit()));
+  Pulumi$Pulumi.$$export("anonymousRequestLimit", Pulumi.output(anonymousLimit("Door")));
+  Pulumi$Pulumi.$$export("anonymousViewLimit", Pulumi.output(anonymousLimit("View")));
   Pulumi$Pulumi.$$export("selfRegistrationInitially", Pulumi.output(selfRegistrationInitially()));
   Pulumi$Pulumi.$$export("fingerprintKey", fingerprintKey());
   Pulumi$Pulumi.$$export("personCheckSiteKey", Pulumi.output(personCheckSiteKey()));
@@ -294,7 +304,9 @@ export {
   _identityProviderId,
   _loginIdentifier,
   _signUpMode,
+  anonymousLimit,
   anonymousRequestLimit,
+  anonymousViewLimit,
   selfRegistrationInitially,
   _present,
   personCheckSiteKey,

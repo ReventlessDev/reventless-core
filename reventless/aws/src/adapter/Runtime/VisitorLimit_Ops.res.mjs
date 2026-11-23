@@ -14,15 +14,8 @@ let tableVariable = "ANONYMOUS_LIMIT_TABLE";
 
 let purpose = "anonymous-request-source";
 
-function limit() {
-  let raw = process.env[AnonymousRequestLimit$Reventless.envKey];
-  if (raw === undefined) {
-    return AnonymousRequestLimit$Reventless.default;
-  }
-  if (raw === "") {
-    return AnonymousRequestLimit$Reventless.default;
-  }
-  let limit$1 = AnonymousRequestLimit$Reventless.parse(raw);
+function limit(kind) {
+  let limit$1 = AnonymousRequestLimit$Reventless.fromSetting(kind, process.env[AnonymousRequestLimit$Reventless.envKeyOf(kind)]);
   if (limit$1.TAG === "Ok") {
     return limit$1._0;
   } else {
@@ -39,13 +32,21 @@ function sourceOf(forwardedFor) {
   }
 }
 
-async function admits(door, source) {
+async function admitsAs(kind, door, source) {
   let tableName = process.env[tableVariable];
   if (tableName !== undefined && tableName !== "") {
-    return await AnonymousLimiter_DynamoDb$ReventlessAws.admit(AnonymousLimiter_DynamoDb$ReventlessAws.dynamoDb(tableName), limit(), address => Secrets_Node_Backend$ReventlessCore.provider.fingerprint(purpose, address), door, sourceOf(source), undefined);
+    return await AnonymousLimiter_DynamoDb$ReventlessAws.admit(AnonymousLimiter_DynamoDb$ReventlessAws.dynamoDb(tableName), limit(kind), address => Secrets_Node_Backend$ReventlessCore.provider.fingerprint(purpose, address), door, sourceOf(source), undefined);
   } else {
     return false;
   }
+}
+
+function admitsDoor(door, source) {
+  return admitsAs("Door", door, source);
+}
+
+function admitsView(view, source) {
+  return admitsAs("View", view, source);
 }
 
 function throttled(door) {
@@ -63,7 +64,9 @@ export {
   purpose,
   limit,
   sourceOf,
-  admits,
+  admitsAs,
+  admitsDoor,
+  admitsView,
   throttled,
 }
 /* Message-ReventlessCore Not a pure module */

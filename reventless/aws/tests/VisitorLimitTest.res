@@ -104,9 +104,34 @@ describe("the function's limit on a visitor's request", () => {
   testPromise("a function handed no count table admits nobody", async () => {
     let before = NodeProcess.env->Dict.get(VisitorLimit_Ops.tableVariable)
     NodeProcess.env->Dict.delete(VisitorLimit_Ops.tableVariable)
-    let admitted = await VisitorLimit_Ops.admits("SignUp", Nullable.make("203.0.113.7"))
+    let door = await VisitorLimit_Ops.admitsDoor("SignUp", Nullable.make("203.0.113.7"))
+    let view = await VisitorLimit_Ops.admitsView("Windows", Nullable.make("203.0.113.7"))
     before->Option.forEach(v => NodeProcess.env->Dict.set(VisitorLimit_Ops.tableVariable, v))
-    expect(admitted)->toBe(false)
+    expect((door, view))->toEqual((false, false))
+  })
+
+  testSync("a door and a view each read their own limit, and default apart", () => {
+    let keys = [
+      Reventless.AnonymousRequestLimit.envKey,
+      Reventless.AnonymousRequestLimit.viewEnvKey,
+    ]
+    let before = keys->Array.map(k => (k, NodeProcess.env->Dict.get(k)))
+    keys->Array.forEach(k => NodeProcess.env->Dict.delete(k))
+    let defaults = (VisitorLimit_Ops.limit(~kind=Door), VisitorLimit_Ops.limit(~kind=View))
+    NodeProcess.env->Dict.set(Reventless.AnonymousRequestLimit.viewEnvKey, "40/60")
+    let set = (VisitorLimit_Ops.limit(~kind=Door), VisitorLimit_Ops.limit(~kind=View))
+    before->Array.forEach(
+      ((k, v)) =>
+        switch v {
+        | Some(v) => NodeProcess.env->Dict.set(k, v)
+        | None => NodeProcess.env->Dict.delete(k)
+        },
+    )
+    let l = (requests, windowSeconds): Reventless.AnonymousRequestLimit.t => {
+      requests,
+      windowSeconds,
+    }
+    expect((defaults, set))->toEqual(((l(20, 3600), l(300, 3600)), (l(20, 3600), l(40, 60))))
   })
 
   testSync("past the limit a door answers the rejection the local platform gives", () => {
@@ -128,7 +153,16 @@ describe("the narrow API's limit, as deployed", () => {
     expect([
       AppSync_VisitorLimit.ceiling(Reventless.AnonymousRequestLimit.default),
       AppSync_VisitorLimit.ceiling({requests: 50, windowSeconds: 60}),
-    ])->toEqual([100, 500])
+    ])->toEqual([200, 500])
+  )
+
+  testSync("one rule for doors and views sits above the larger of the two limits", () =>
+    expect(
+      AppSync_VisitorLimit.ceilingOf(
+        ~doors=Reventless.AnonymousRequestLimit.default,
+        ~views=Reventless.AnonymousRequestLimit.viewDefault,
+      ),
+    )->toBe(3000)
   )
 
   testSync("its rule blocks per source address, and keeps no sample of requests", () => {

@@ -67,6 +67,7 @@ let throttled = (~rule: Reventless.Authorization.permission, ~field, ~ctx): opti
   switch rule {
   | AllowAnonymous
     if !LocalAnonymousLimit.admit(
+      ~kind=Door,
       ~door=field,
       ~source=ctx->sourceAddressOf->Option.getOr("unknown"),
     ) =>

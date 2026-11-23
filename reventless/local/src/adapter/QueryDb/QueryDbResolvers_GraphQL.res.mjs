@@ -94,7 +94,7 @@ function Make(Bus) {
         };
       }
       let tmp;
-      tmp = typeof authorization !== "object" && authorization === "AllowAnonymous" ? !LocalAnonymousLimit$ReventlessLocal.admit(name, Stdlib_Option.getOr(Primitive_option.fromNullable(ctx.sourceAddress), "unknown")) : false;
+      tmp = typeof authorization !== "object" && authorization === "AllowAnonymous" ? !LocalAnonymousLimit$ReventlessLocal.admit("View", name, Stdlib_Option.getOr(Primitive_option.fromNullable(ctx.sourceAddress), "unknown")) : false;
       if (tmp) {
         throw GraphQL_CallerError$ReventlessLocal.throttled(`Query.` + name + `: too many requests from this source; retry later`);
       }

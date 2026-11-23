@@ -16,12 +16,17 @@ import * as AppSync_VisitorCode$ReventlessAws from "./AppSync_VisitorCode.res.mj
 import * as DcbCommandFunctions$ReventlessAws from "../../adapter/Runtime/DcbCommandFunctions.res.mjs";
 import * as Stash_DynamoDb_Table$ReventlessAws from "../../adapter/Stash/Stash_DynamoDb_Table.res.mjs";
 
-let configuredRef = {
+let doorsRef = {
   contents: Pulumi.output("")
 };
 
-function configure(limit) {
-  configuredRef.contents = limit;
+let viewsRef = {
+  contents: Pulumi.output("")
+};
+
+function configure(doors, views) {
+  doorsRef.contents = doors;
+  viewsRef.contents = views;
 }
 
 let tableRef = {
@@ -130,6 +135,10 @@ function ceiling(limit) {
   return Math.max(100, limit.requests * 10 | 0);
 }
 
+function ceilingOf(doors, views) {
+  return Math.max(ceiling(doors), ceiling(views));
+}
+
 function rateRule(name, ceiling) {
   return JSON.parse(`{
     "name": "` + name + `",
@@ -150,8 +159,17 @@ function rateRule(name, ceiling) {
   }`);
 }
 
-function makeCeiling(name, visitors, limitOpt, opts) {
-  let limit = limitOpt !== undefined ? limitOpt : configuredRef.contents;
+function makeCeiling(name, visitors, doorsOpt, viewsOpt, opts) {
+  let doors = doorsOpt !== undefined ? doorsOpt : doorsRef.contents;
+  let views = viewsOpt !== undefined ? viewsOpt : viewsRef.contents;
+  let configured = (kind, raw) => {
+    let limit = AnonymousRequestLimit$Reventless.fromSetting(kind, raw);
+    if (limit.TAG === "Ok") {
+      return limit._0;
+    } else {
+      return Stdlib_JsError.throwWithMessage(limit._0);
+    }
+  };
   let customOpts_parent = opts.parent;
   let customOpts = {
     parent: customOpts_parent
@@ -160,16 +178,10 @@ function makeCeiling(name, visitors, limitOpt, opts) {
     scope: "REGIONAL",
     description: "Turns a flood from one source away from the door for visitors",
     defaultAction: JSON.parse(`{"allow": {}}`),
-    rules: limit.apply(raw => {
-      let configured;
-      if (raw === "") {
-        configured = AnonymousRequestLimit$Reventless.default;
-      } else {
-        let limit = AnonymousRequestLimit$Reventless.parse(raw);
-        configured = limit.TAG === "Ok" ? limit._0 : Stdlib_JsError.throwWithMessage(limit._0);
-      }
-      return [rateRule(name + `RatePerSource`, ceiling(configured))];
-    }),
+    rules: Pulumi.all([
+      doors,
+      views
+    ]).apply(param => [rateRule(name + `RatePerSource`, ceilingOf(configured("Door", param[0]), configured("View", param[1])))]),
     visibilityConfig: JSON.parse(`{"cloudwatchMetricsEnabled": true, "metricName": "` + name + `Ceiling", "sampledRequestsEnabled": false}`),
     tags: AWS_Tags$ReventlessAws.make(name + `Ceiling`, "Plugin", "Api", "plugin", undefined, undefined, undefined, undefined)
   }, customOpts);
@@ -180,7 +192,8 @@ function makeCeiling(name, visitors, limitOpt, opts) {
 }
 
 export {
-  configuredRef,
+  doorsRef,
+  viewsRef,
   configure,
   tableRef,
   table,
@@ -193,7 +206,8 @@ export {
   guarding,
   step,
   ceiling,
+  ceilingOf,
   rateRule,
   makeCeiling,
 }
-/* configuredRef Not a pure module */
+/* doorsRef Not a pure module */

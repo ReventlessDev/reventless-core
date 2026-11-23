@@ -48,6 +48,7 @@ let capabilityEnv = () => capabilityEnvRef->Dict.toArray
 /** The settings among them the command function hands its doors too. */
 let doorSettings = [
   Reventless.AnonymousRequestLimit.envKey,
+  Reventless.AnonymousRequestLimit.viewEnvKey,
   Reventless.Admission.initiallyEnvKey,
   ReventlessCore.Secrets_Node_Backend.fingerprintKeyVariable,
   Reventless.PersonCheck.secretEnvKey,

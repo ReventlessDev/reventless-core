@@ -36,15 +36,19 @@ door is what a script aims at. Past the limit the answer is `CommandRejected` wi
 `errorCode: "Throttled"` and cause `INFRASTRUCTURE`, and the count starts again in
 the next window.
 
-The limit is deployment configuration, `requests/seconds`, ten an hour by default:
+The limit is deployment configuration, `requests/seconds`, and a view has one of
+its own, because a page reads a view on every visit: twenty an hour for each door
+and three hundred for each view by default.
 
 ```bash
-REVENTLESS_ANONYMOUS_REQUEST_LIMIT=10/3600
+REVENTLESS_ANONYMOUS_REQUEST_LIMIT=20/3600
+REVENTLESS_ANONYMOUS_VIEW_LIMIT=300/3600
 ```
 
 A value that does not parse fails the request rather than falling back to the
-default. The local platform enforces it on its GraphQL doors; a deployed platform
-admits no anonymous field yet, and the door it will have reads the same setting.
+default. The local platform enforces both on its GraphQL doors and views; on AWS
+they are `platform:anonymousRequestLimit` and `platform:anonymousViewLimit` on the
+platform stack, enforced by the API for visitors.
 
 How often an *address* may be written to is a different limit and belongs to the
 domain: count it in a `decide`, where it is recorded and survives a replay.

@@ -52,7 +52,7 @@ function rejectThrottled(field) {
 }
 
 function throttled(rule, field, ctx) {
-  if (typeof rule !== "object" && rule === "AllowAnonymous" && !LocalAnonymousLimit$ReventlessLocal.admit(field, Stdlib_Option.getOr(Primitive_option.fromNullable(ctx.sourceAddress), "unknown"))) {
+  if (typeof rule !== "object" && rule === "AllowAnonymous" && !LocalAnonymousLimit$ReventlessLocal.admit("Door", field, Stdlib_Option.getOr(Primitive_option.fromNullable(ctx.sourceAddress), "unknown"))) {
     return rejectThrottled(field);
   }
 }

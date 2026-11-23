@@ -67,4 +67,22 @@ describe("AnonymousRequestLimit.parse", () => {
       ),
     )->toEqual(Ok(Reventless.AnonymousRequestLimit.default))
   )
+
+  testSync("an unset setting is its kind's default, a set one is read as written", () =>
+    expect([
+      Reventless.AnonymousRequestLimit.fromSetting(~kind=Door, None),
+      Reventless.AnonymousRequestLimit.fromSetting(~kind=View, Some("")),
+      Reventless.AnonymousRequestLimit.fromSetting(~kind=View, Some("20/60")),
+    ])->toEqual([
+      Ok({Reventless.AnonymousRequestLimit.requests: 20, windowSeconds: 3600}),
+      Ok({requests: 300, windowSeconds: 3600}),
+      Ok({requests: 20, windowSeconds: 60}),
+    ])
+  )
+
+  testSync("a mistyped view limit names the views' variable and default", () =>
+    expect(Reventless.AnonymousRequestLimit.parse(~kind=View, "lots"))->toEqual(
+      Error(`REVENTLESS_ANONYMOUS_VIEW_LIMIT: "lots" is not a limit — write requests/seconds, such as 300/3600`),
+    )
+  )
 })

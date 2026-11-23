@@ -7,10 +7,14 @@
 //   it runs a function. Its windows cannot express the configured one, which is
 //   why it is the ceiling and not the limit.
 
-// The configured limit as the platform exports it (`""`: the default), said by
-// the plugin deploy before the plugin is built.
-let configuredRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
-let configure = (limit: Pulumi.Output.t<string>) => configuredRef := limit
+// The configured limits for doors and views as the platform exports them (`""`:
+// the kind's default), said by the plugin deploy before the plugin is built.
+let doorsRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+let viewsRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+let configure = (~doors: Pulumi.Output.t<string>, ~views: Pulumi.Output.t<string>) => {
+  doorsRef := doors
+  viewsRef := views
+}
 
 // ── The table the function counts in ────────────────────────────────────────
 
@@ -174,6 +178,13 @@ let step = (~resolverName: string, ~opts: Pulumi.CustomResourceOptions.t): optio
 let ceiling = (limit: Reventless.AnonymousRequestLimit.t): int =>
   Math.Int.max(100, limit.requests * 10)
 
+/** One rule covers the doors and the views, so it sits above the larger limit:
+    under the smaller, a page reloaded within the views' limit would be blocked. */
+let ceilingOf = (
+  ~doors: Reventless.AnonymousRequestLimit.t,
+  ~views: Reventless.AnonymousRequestLimit.t,
+): int => Math.Int.max(ceiling(doors), ceiling(views))
+
 let rateRule = (~name: string, ~ceiling: int): JSON.t =>
   JSON.parseOrThrow(
     `{
@@ -195,14 +206,20 @@ let rateRule = (~name: string, ~ceiling: int): JSON.t =>
   }`,
   )
 
-/** The rate rule on the narrow API, and on no other. `limit` is the configured
-    one as the platform exports it (`""`: the default). */
+/** The rate rule on the narrow API, and on no other. `doors` and `views` are the
+    configured limits as the platform exports them (`""`: the kind's default). */
 let makeCeiling = (
   ~name: string,
   ~visitors: AppSync_VisitorApi.made,
-  ~limit: Pulumi.Output.t<string>=configuredRef.contents,
+  ~doors: Pulumi.Output.t<string>=doorsRef.contents,
+  ~views: Pulumi.Output.t<string>=viewsRef.contents,
   ~opts: Pulumi.ComponentResource.options,
 ) => {
+  let configured = (~kind, raw) =>
+    switch Reventless.AnonymousRequestLimit.fromSetting(~kind, Some(raw)) {
+    | Ok(limit) => limit
+    | Error(message) => JsError.throwWithMessage(message)
+    }
   let customOpts: Pulumi.CustomResourceOptions.t = {parent: ?opts.parent}
   let acl = PulumiAws.WafV2.WebAcl.make(
     ~name=`${name}Ceiling`,
@@ -210,18 +227,17 @@ let makeCeiling = (
       scope: "REGIONAL",
       description: "Turns a flood from one source away from the door for visitors",
       defaultAction: JSON.parseOrThrow(`{"allow": {}}`),
-      rules: limit
-      ->Pulumi.Output.apply(raw => {
-        let configured = switch raw {
-        | "" => Reventless.AnonymousRequestLimit.default
-        | raw =>
-          switch Reventless.AnonymousRequestLimit.parse(raw) {
-          | Ok(limit) => limit
-          | Error(message) => JsError.throwWithMessage(message)
-          }
-        }
-        [rateRule(~name=`${name}RatePerSource`, ~ceiling=ceiling(configured))]
-      })
+      rules: (doors, views)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((doors, views)) => [
+        rateRule(
+          ~name=`${name}RatePerSource`,
+          ~ceiling=ceilingOf(
+            ~doors=configured(~kind=Door, doors),
+            ~views=configured(~kind=View, views),
+          ),
+        ),
+      ])
       ->Pulumi.Output.asInput,
       // No sampled requests: a sample holds the caller's address.
       visibilityConfig: JSON.parseOrThrow(

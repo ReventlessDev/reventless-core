@@ -764,7 +764,8 @@ be committed.
 | `platform:operatorAddress` | no (may be) | none | The plugin is refused at deploy: no alarm on the bill. |
 | `platform:registrationMailDailyCap` | no | `50` | Sign-up mail stops after 50 a day. |
 | `platform:billAlarmMonthlyUsd` | no | `20` | The budget alarm is at 20 US dollars a month. |
-| `platform:anonymousRequestLimit` | no | `10/3600` | A source may make 10 requests an hour to each door for visitors. |
+| `platform:anonymousRequestLimit` | no | `20/3600` | A source may make 20 requests an hour to each door for visitors. |
+| `platform:anonymousViewLimit` | no | `300/3600` | A source may make 300 requests an hour to each view for visitors. |
 | `platform:selfRegistrationInitially` | no | `closed` | No role takes visitors until an administrator opens it. |
 
 Notes on each:
@@ -783,10 +784,13 @@ Notes on each:
   and an alarm is raised.
 - **`billAlarmMonthlyUsd`**: whole dollars. The budget counts SES, Cognito, AppSync and WAF across
   the **whole AWS account**, so other deployments in the account count too.
-- **`anonymousRequestLimit`**: `requests/seconds`, such as `10/3600`. Each sign-up uses a few
-  requests (reading which roles are open, starting, completing), so keep room for a person who
-  mistypes a code. A firewall rule also stops a source that makes more than ten times the limit's requests, and at
-  least 100, in five minutes.
+- **`anonymousRequestLimit`**: `requests/seconds`, such as `20/3600`, for each door (a request
+  that does something, such as starting or completing a sign-up). Each sign-up uses a few, so
+  keep room for a person who mistypes a code.
+- **`anonymousViewLimit`**: the same form, for each view (a read, such as which roles are
+  open). The sign-in page reads it on every visit, and several people may share one address, so
+  it is far higher than the doors' limit. A firewall rule also stops a source that makes more
+  than ten times the larger of the two limits' requests, and at least 100, in five minutes.
 - **`selfRegistrationInitially`**: `open` or `closed`. An administrator opens a role for a time in
   the shell; when that time ends the role returns to this state.
 

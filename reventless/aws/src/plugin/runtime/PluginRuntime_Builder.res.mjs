@@ -49,6 +49,7 @@ function capabilityEnv() {
 
 let doorSettings = [
   AnonymousRequestLimit$Reventless.envKey,
+  AnonymousRequestLimit$Reventless.viewEnvKey,
   Admission$Reventless.initiallyEnvKey,
   Secrets_Node_Backend$ReventlessCore.fingerprintKeyVariable,
   PersonCheck$Reventless.secretEnvKey

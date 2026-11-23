@@ -3,17 +3,49 @@
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 
 let $$default = {
-  requests: 10,
+  requests: 20,
+  windowSeconds: 3600
+};
+
+let viewDefault = {
+  requests: 300,
   windowSeconds: 3600
 };
 
 let envKey = "REVENTLESS_ANONYMOUS_REQUEST_LIMIT";
 
+let viewEnvKey = "REVENTLESS_ANONYMOUS_VIEW_LIMIT";
+
+function defaultOf(kind) {
+  if (kind === "Door") {
+    return $$default;
+  } else {
+    return viewDefault;
+  }
+}
+
+function envKeyOf(kind) {
+  if (kind === "Door") {
+    return envKey;
+  } else {
+    return viewEnvKey;
+  }
+}
+
+function configKeyOf(kind) {
+  if (kind === "Door") {
+    return "anonymousRequestLimit";
+  } else {
+    return "anonymousViewLimit";
+  }
+}
+
 function toString(param) {
   return param.requests.toString() + `/` + param.windowSeconds.toString();
 }
 
-function parse(raw) {
+function parse(kindOpt, raw) {
+  let kind = kindOpt !== undefined ? kindOpt : "Door";
   let whole = s => {
     let s$1 = s.trim();
     if (/^\d+$/.test(s$1)) {
@@ -38,14 +70,31 @@ function parse(raw) {
   }
   return {
     TAG: "Error",
-    _0: envKey + `: "` + raw + `" is not a limit — write requests/seconds, such as ` + toString($$default)
+    _0: envKeyOf(kind) + `: "` + raw + `" is not a limit — write requests/seconds, such as ` + toString(defaultOf(kind))
   };
+}
+
+function fromSetting(kind, setting) {
+  if (setting !== undefined && setting !== "") {
+    return parse(kind, setting);
+  } else {
+    return {
+      TAG: "Ok",
+      _0: defaultOf(kind)
+    };
+  }
 }
 
 export {
   $$default as default,
+  viewDefault,
   envKey,
+  viewEnvKey,
+  defaultOf,
+  envKeyOf,
+  configKeyOf,
   toString,
   parse,
+  fromSetting,
 }
 /* No side effect */

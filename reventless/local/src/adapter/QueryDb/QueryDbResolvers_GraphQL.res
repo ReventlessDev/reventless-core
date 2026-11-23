@@ -137,10 +137,11 @@ module Make = (Bus: LocalBus.T) => {
         Deny("Forbidden")
       } else if (
         // A view open to callers who are not signed in is counted per source
-        // address like any anonymous door, whoever the caller turns out to be.
+        // address, under the views' own limit, whoever the caller turns out to be.
         switch authorization {
         | AllowAnonymous =>
           !LocalAnonymousLimit.admit(
+            ~kind=View,
             ~door=name,
             ~source=ctx->sourceAddressOf->Option.getOr("unknown"),
           )

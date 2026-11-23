@@ -30,7 +30,7 @@ import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessde
 // compiler-checked against the framework signatures (see the module header and
 // docs/plans/done/minimize-lambda-entrypoint-mjs-shell.md).
 import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler, buildInboundReceiver, buildWebhookSlice, serveWebhook } from "./DcbCommandTopicEntryPoint_Ops.res.mjs";
-import { admits as visitorAdmits, throttled as visitorThrottled } from "./VisitorLimit_Ops.res.mjs";
+import { admitsDoor as visitorAdmitsDoor, admitsView as visitorAdmitsView, throttled as visitorThrottled } from "./VisitorLimit_Ops.res.mjs";
 import { makeDynamoQueryDbOps } from "./QueryDbEntryPoint_Ops.res.mjs";
 
 // A specifier may name one export after `#`: a module a plugin's file applies.
@@ -374,7 +374,7 @@ export async function handler(event, context) {
     // A door on the narrow API for visitors says so, with the caller's address:
     // it is counted per door and source before anything is relayed. Only that
     // API's resolver sets the mark; the address is not logged.
-    if (event.visitor === true && !(await visitorAdmits(fieldName, event.sourceAddress))) {
+    if (event.visitor === true && !(await visitorAdmitsDoor(fieldName, event.sourceAddress))) {
       return visitorThrottled(fieldName);
     }
     log.debug("InboundTranslation invocation (" + fieldName + ")", { comp: "DcbCommandTopicRuntime" });
@@ -382,9 +382,10 @@ export async function handler(event, context) {
   }
 
   // Route L: a view on the narrow API for visitors asks, before it reads, whether
-  // one more request from this source reaches it: `{__visitorLimit, door, sourceAddress}`.
+  // one more request from this source reaches it: `{__visitorLimit, door, sourceAddress}`,
+  // under the views' limit rather than the doors'.
   if (event.__visitorLimit === true) {
-    return { admitted: await visitorAdmits(event.door, event.sourceAddress) };
+    return { admitted: await visitorAdmitsView(event.door, event.sourceAddress) };
   }
 
   // Route P: a platform Lambda (automations, outbound translations) invokes this

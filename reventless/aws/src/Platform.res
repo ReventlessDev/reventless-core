@@ -2940,13 +2940,21 @@ module MakeWithConfig = (
     )
 
     // What the deployment says for its doors, read across the same two halves: the
-    // limit for visitors, how a self-service role starts, the fingerprint key.
+    // limits for visitors, how a self-service role starts, the fingerprint key. A
+    // platform stack that exports no view limit answers `""`: the views' default.
     let anonymousRequestLimit = platformOutput("anonymousRequestLimit", ~local=() =>
       Pulumi.Output.make(Platform_Stack.anonymousRequestLimit())
     )
     PluginRuntime_Builder.registerCapabilityEnv(
       Reventless.AnonymousRequestLimit.envKey,
       anonymousRequestLimit,
+    )
+    let anonymousViewLimit = platformOutput("anonymousViewLimit", ~local=() =>
+      Pulumi.Output.make(Platform_Stack.anonymousViewLimit())
+    )
+    PluginRuntime_Builder.registerCapabilityEnv(
+      Reventless.AnonymousRequestLimit.viewEnvKey,
+      anonymousViewLimit,
     )
     PluginRuntime_Builder.registerCapabilityEnv(
       Reventless.Admission.initiallyEnvKey,
@@ -2990,7 +2998,7 @@ module MakeWithConfig = (
       Reventless.PersonCheck.secretEnvKey,
       personCheckSecret,
     )
-    AppSync_VisitorLimit.configure(anonymousRequestLimit)
+    AppSync_VisitorLimit.configure(~doors=anonymousRequestLimit, ~views=anonymousViewLimit)
     // A plugin stack hosts a narrow API for the fields it declares for visitors.
     AppSync_VisitorApi.host()
     module P = unpack(plugin)

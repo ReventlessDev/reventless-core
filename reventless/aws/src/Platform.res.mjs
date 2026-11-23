@@ -638,7 +638,7 @@ function MakeWithConfig(Config) {
       });
       await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
     });
-    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, {});
+    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, undefined, {});
     return Pulumi.all([
       pushed,
       visitors.schemaPushed
@@ -1539,6 +1539,8 @@ function MakeWithConfig(Config) {
     PluginRuntime_Builder$ReventlessAws.registerStash(stashTable, platformOutput("stashArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.arn));
     let anonymousRequestLimit = platformOutput("anonymousRequestLimit", () => Pulumi.output(Platform_Stack$ReventlessAws.anonymousRequestLimit()));
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.envKey, anonymousRequestLimit);
+    let anonymousViewLimit = platformOutput("anonymousViewLimit", () => Pulumi.output(Platform_Stack$ReventlessAws.anonymousViewLimit()));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.viewEnvKey, anonymousViewLimit);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Admission$Reventless.initiallyEnvKey, platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())));
     let fingerprintKey = platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey());
     let messagingConfigurationSet = platformOutput("messagingConfigurationSet", () => Pulumi.output(""));
@@ -1550,7 +1552,7 @@ function MakeWithConfig(Config) {
     let personCheckSecret = platformOutput("personCheckSecret", () => Platform_Stack$ReventlessAws.personCheckSecret());
     let personCheckSiteKey = platformOutput("personCheckSiteKey", () => Pulumi.output(Platform_Stack$ReventlessAws.personCheckSiteKey()));
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(PersonCheck$Reventless.secretEnvKey, personCheckSecret);
-    AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit);
+    AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit, anonymousViewLimit);
     AppSync_VisitorApi$ReventlessAws.host();
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
@@ -2265,7 +2267,7 @@ function Make($star) {
       });
       await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
     });
-    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, {});
+    AppSync_VisitorLimit$ReventlessAws.makeCeiling(name + `Visitors`, visitors, undefined, undefined, {});
     return Pulumi.all([
       pushed,
       visitors.schemaPushed
@@ -3141,6 +3143,8 @@ function Make($star) {
     PluginRuntime_Builder$ReventlessAws.registerStash(stashTable, platformOutput("stashArn", () => Platform_Stack$ReventlessAws.resolveCognitoUserPool().stashTable.arn));
     let anonymousRequestLimit = platformOutput("anonymousRequestLimit", () => Pulumi.output(Platform_Stack$ReventlessAws.anonymousRequestLimit()));
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.envKey, anonymousRequestLimit);
+    let anonymousViewLimit = platformOutput("anonymousViewLimit", () => Pulumi.output(Platform_Stack$ReventlessAws.anonymousViewLimit()));
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(AnonymousRequestLimit$Reventless.viewEnvKey, anonymousViewLimit);
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(Admission$Reventless.initiallyEnvKey, platformOutput("selfRegistrationInitially", () => Pulumi.output(Platform_Stack$ReventlessAws.selfRegistrationInitially())));
     let fingerprintKey = platformOutput("fingerprintKey", () => Platform_Stack$ReventlessAws.fingerprintKey());
     let messagingConfigurationSet = platformOutput("messagingConfigurationSet", () => Pulumi.output(""));
@@ -3152,7 +3156,7 @@ function Make($star) {
     let personCheckSecret = platformOutput("personCheckSecret", () => Platform_Stack$ReventlessAws.personCheckSecret());
     let personCheckSiteKey = platformOutput("personCheckSiteKey", () => Pulumi.output(Platform_Stack$ReventlessAws.personCheckSiteKey()));
     PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv(PersonCheck$Reventless.secretEnvKey, personCheckSecret);
-    AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit);
+    AppSync_VisitorLimit$ReventlessAws.configure(anonymousRequestLimit, anonymousViewLimit);
     AppSync_VisitorApi$ReventlessAws.host();
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();

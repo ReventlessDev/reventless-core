@@ -151,20 +151,28 @@ let _signUpMode = (~cfg: Pulumi.Config.t): Auth_SignUpMode.t => {
 
 // ── What the deployment says for its doors ──────────────────────────────────
 
-/** `platform:anonymousRequestLimit`, as written (`10/3600`); `""` when unset,
-    which every reader takes as the default. Refused when it does not parse. */
-let anonymousRequestLimit = (): string =>
-  switch Pulumi.Config.make(Some("platform"))->Pulumi.Config.get("anonymousRequestLimit") {
+/** `platform:anonymousRequestLimit` (doors) or `platform:anonymousViewLimit`
+    (views), as written (`20/3600`); `""` when unset, which every reader takes as
+    the kind's default. Refused when it does not parse. */
+let anonymousLimit = (~kind: Reventless.AnonymousRequestLimit.kind): string => {
+  let key = Reventless.AnonymousRequestLimit.configKeyOf(kind)
+  switch Pulumi.Config.make(Some("platform"))->Pulumi.Config.get(key) {
   | None | Some("") => ""
   | Some(raw) =>
-    switch Reventless.AnonymousRequestLimit.parse(raw) {
+    switch Reventless.AnonymousRequestLimit.parse(~kind, raw) {
     | Ok(limit) => Reventless.AnonymousRequestLimit.toString(limit)
     | Error(_) =>
       JsError.throwWithMessage(
-        `platform:anonymousRequestLimit: "${raw}" is not a limit — write requests/seconds, such as ${Reventless.AnonymousRequestLimit.default->Reventless.AnonymousRequestLimit.toString}`,
+        `platform:${key}: "${raw}" is not a limit — write requests/seconds, such as ${Reventless.AnonymousRequestLimit.defaultOf(
+            kind,
+          )->Reventless.AnonymousRequestLimit.toString}`,
       )
     }
   }
+}
+
+let anonymousRequestLimit = () => anonymousLimit(~kind=Door)
+let anonymousViewLimit = () => anonymousLimit(~kind=View)
 
 /** `platform:selfRegistrationInitially`: `open` or `closed`, closed when unset. */
 let selfRegistrationInitially = (): string =>
@@ -513,6 +521,7 @@ let _resolveUncached = (): cognitoUserPool => {
   // What the deployment says for its doors: read by every plugin stack and handed
   // to its functions. Each is refused here when mistyped, where someone is watching.
   Pulumi.Pulumi.export("anonymousRequestLimit", Pulumi.Output.make(anonymousRequestLimit()))
+  Pulumi.Pulumi.export("anonymousViewLimit", Pulumi.Output.make(anonymousViewLimit()))
   Pulumi.Pulumi.export("selfRegistrationInitially", Pulumi.Output.make(selfRegistrationInitially()))
   Pulumi.Pulumi.export("fingerprintKey", fingerprintKey())
   Pulumi.Pulumi.export("personCheckSiteKey", Pulumi.Output.make(personCheckSiteKey()))

@@ -58,6 +58,27 @@ describe("the limit on anonymous doors", () => {
     ))
   })
 
+  testSync("a view is counted under its own limit, not the doors'", () => {
+    NodeProcess.env->setEnv(Reventless.AnonymousRequestLimit.viewEnvKey, "4/3600")
+    LocalAnonymousLimit.reset()
+    let view = () => LocalAnonymousLimit.admit(~kind=View, ~door="Windows", ~source="10.0.0.1")
+    let _ = throttled(~rule=AllowAnonymous, ~ctx=ctxFrom("10.0.0.1"))
+    let _ = throttled(~rule=AllowAnonymous, ~ctx=ctxFrom("10.0.0.1"))
+    let doorSpent = throttled(~rule=AllowAnonymous, ~ctx=ctxFrom("10.0.0.1"))->Option.isSome
+    let views = Array.fromInitializer(~length=5, _ => view())
+    NodeProcess.env->Dict.delete(Reventless.AnonymousRequestLimit.viewEnvKey)
+    expect((doorSpent, views))->toEqual((true, [true, true, true, true, false]))
+  })
+
+  testSync("a view's limit defaults to 300 an hour where none is set", () => {
+    NodeProcess.env->Dict.delete(Reventless.AnonymousRequestLimit.viewEnvKey)
+    LocalAnonymousLimit.reset()
+    expect(LocalAnonymousLimit.configured(~kind=View))->toEqual({
+      Reventless.AnonymousRequestLimit.requests: 300,
+      windowSeconds: 3600,
+    })
+  })
+
   testSync("a mistyped limit fails rather than becoming the default", () => {
     NodeProcess.env->setEnv(Reventless.AnonymousRequestLimit.envKey, "ten")
     LocalAnonymousLimit.reset()
