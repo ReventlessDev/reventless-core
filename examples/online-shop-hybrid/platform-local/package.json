@@ -40,7 +40,7 @@
     }
   },
   "optionalDependencies": {
-    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.134"
+    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.135"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "workspace:*",
