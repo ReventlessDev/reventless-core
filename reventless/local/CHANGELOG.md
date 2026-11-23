@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.346 (2026-11-23)
+
+* feat(core)!: a door open to visitors keeps no audit log ([1ff2c23](https://github.com/ReventlessDev/reventless-core/commit/1ff2c23fca3b66479d76e2d4e92b24ad6f45e94a))
+### Features
+
+* **aws:** a view for visitors has a limit of its own, and a door allows 20 an hour ([3eeef52](https://github.com/ReventlessDev/reventless-core/commit/3eeef52292be1c8f19598e84654cf59ca5389136))
+* **core:** a plugin with doors for visitors counts their requests in a view its operators read ([a8e7612](https://github.com/ReventlessDev/reventless-core/commit/a8e76126ed5d3476c09fdd3f2b4a51cc2288f6e0))
+* **local:** the local platform limits visitors only where a limit is set ([c05ba3d](https://github.com/ReventlessDev/reventless-core/commit/c05ba3d79ab3088a87ee4a4de9d60e3c20fa159f))
+* **local:** the sign-in page can show a notice kept live, and an accounts file made after start is read ([7b0e159](https://github.com/ReventlessDev/reventless-core/commit/7b0e159e209496fcf5462d87ea54024eef290f86))
+
+### BREAKING CHANGES
+
+* <Plugin>_<Slice>Audit, …Audits, …AuditsByIds and
+…AuditsRefs are gone for an inbound translation whose door is open to
+visitors.
+
+
+
 # 3.0.0-alpha.345 (2026-11-23)
 
 ### Bug Fixes

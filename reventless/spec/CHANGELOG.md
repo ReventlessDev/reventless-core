@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.214 (2026-11-23)
+
+### Bug Fixes
+
+* **spec:** the visitor request count test names its module, so a fresh build compiles it first ([7fef285](https://github.com/ReventlessDev/reventless-core/commit/7fef285efb5896c52e644e38bb07d6ca9e858352))
+### Features
+
+* **aws:** a view for visitors has a limit of its own, and a door allows 20 an hour ([3eeef52](https://github.com/ReventlessDev/reventless-core/commit/3eeef52292be1c8f19598e84654cf59ca5389136))
+* **core:** a plugin with doors for visitors counts their requests in a view its operators read ([a8e7612](https://github.com/ReventlessDev/reventless-core/commit/a8e76126ed5d3476c09fdd3f2b4a51cc2288f6e0))
+
+
 # 3.0.0-alpha.213 (2026-11-23)
 
 ### Bug Fixes

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.44 (2026-11-23)
+
+### Features
+
+* **core:** a plugin with doors for visitors counts their requests in a view its operators read ([a8e7612](https://github.com/ReventlessDev/reventless-core/commit/a8e76126ed5d3476c09fdd3f2b4a51cc2288f6e0))
+
+
 # 1.0.0-alpha.43 (2026-11-23)
 
 **Note:** Version bump only for package @reventlessdev/reventless-registration
