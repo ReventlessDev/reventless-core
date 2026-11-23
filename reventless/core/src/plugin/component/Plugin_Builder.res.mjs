@@ -40,6 +40,7 @@ import * as ResourceAttribution$ReventlessCore from "../../ResourceAttribution.r
 import * as Plugin_EventQuerySchema$ReventlessCore from "./Plugin_EventQuerySchema.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as Plugin_SubscriptionSchema$ReventlessCore from "./Plugin_SubscriptionSchema.res.mjs";
+import * as VisitorRequestCount_Builder$ReventlessCore from "../../components/QueryDb/VisitorRequestCount_Builder.res.mjs";
 import * as ResourceAttribution_Deploytime$ReventlessCore from "../../adapter/ResourceAttribution_Deploytime.res.mjs";
 
 function Make(Spec) {
@@ -209,7 +210,9 @@ function Make(Spec) {
             resolvedFields: resolvedFields.length !== 0 ? resolvedFields : undefined
           };
         });
-        let queryEntries = queryEntriesFromReadModels.concat(dcbResult.queryEntries);
+        let domainQueryEntries = queryEntriesFromReadModels.concat(dcbResult.queryEntries);
+        let countsVisitorRequests = Stdlib_Option.isSome(Spec.hooks.visitorRequestCountsHook) && VisitorRequestCount_Builder$ReventlessCore.hasVisitorFields(mutationEntries, domainQueryEntries);
+        let queryEntries = countsVisitorRequests ? domainQueryEntries.concat([VisitorRequestCount_Builder$ReventlessCore.queryEntry(extra$1)]) : domainQueryEntries;
         let eventLogEntriesFromAggregates = aggregates.map(M => ({
           busKey: M.Spec.name + "AggrEventLog",
           displayName: M.Spec.name,
@@ -293,6 +296,9 @@ function Make(Spec) {
         });
         Object.entries(dcbResult.outboundTranslationSlicesOutputs).forEach(param => {
           allQueryDbs[param[0] + "Todo"] = param[1].queryDb;
+        });
+        Stdlib_Option.forEach(Stdlib_Option.flatMap(Spec.hooks.visitorRequestCountsHook, make => make(extra$1, countsVisitorRequests, opts)), db => {
+          allQueryDbs[VisitorRequestCount_Builder$ReventlessCore.name] = db;
         });
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
         let chapterByName = {};

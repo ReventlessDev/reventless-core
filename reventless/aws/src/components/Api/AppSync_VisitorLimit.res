@@ -49,6 +49,38 @@ let policy = (~id: string, arn: string): string => {
   )->PulumiAws.PolicyDocument.toJsonString
 }
 
+// ── The view of how many requests visitors made ─────────────────────────────
+
+// A plugin's view of visitor request counts is made after the command function
+// that writes to it is set up, so the function is handed the table's name as a
+// value said later: by the plugin, as the view is made, or as `""` where it has
+// none. Every plugin says one or the other as it is built, so none waits forever.
+type countsCell = {table: Pulumi.Output.t<string>, resolve: Pulumi.Output.t<string> => unit}
+let countsCells: dict<countsCell> = Dict.make()
+
+let countsCell = (plugin: string): countsCell =>
+  switch countsCells->Dict.get(plugin) {
+  | Some(cell) => cell
+  | None =>
+    let resolver = ref(_ => ())
+    let table =
+      Promise.make((resolve, _) => resolver := resolve)->DcbCommandFunctions.outputOfPromise
+    let cell = {table, resolve: name => resolver.contents(name)}
+    countsCells->Dict.set(plugin, cell)
+    cell
+  }
+
+/** The table of `plugin`'s view of visitor request counts, `""` where it has none. */
+let countsTable = (plugin: string) => countsCell(plugin).table
+
+/** Says where `plugin`'s view's table is, or `""` for a plugin with no view. */
+let provideCounts = (~plugin: string, tableName: Pulumi.Output.t<string>) =>
+  countsCell(plugin).resolve(tableName)
+
+/** For a plugin with no view the table name is `""`, and the grant names no table. */
+let countsPolicy = (~id: string, tableName: string): string =>
+  policy(~id, `arn:aws:dynamodb:*:*:table/${tableName}`)
+
 // ── The step before a view's read ───────────────────────────────────────────
 
 type dataSource = {name: Pulumi.Output.t<string>}

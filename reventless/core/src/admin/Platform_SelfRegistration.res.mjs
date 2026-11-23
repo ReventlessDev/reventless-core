@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Role$Reventless from "@reventlessdev/reventless-spec/src/types/Role.res.mjs";
 import * as Admission$Reventless from "@reventlessdev/reventless-spec/src/types/Admission.res.mjs";
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
+import * as VisitorRequestCount$Reventless from "@reventlessdev/reventless-spec/src/types/VisitorRequestCount.res.mjs";
 
 let configKey = "selfRegistration";
 
@@ -70,6 +71,10 @@ function policyFields(structures) {
   });
 }
 
+function countsField(structures) {
+  return Stdlib_Option.map(marked(structures, "start"), param => Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(param[0], VisitorRequestCount$Reventless.queryDbName, undefined).listFieldName + "ByIds");
+}
+
 function fromStructures(structures, initially) {
   let match = doorField(structures, "start");
   let match$1 = doorField(structures, "complete");
@@ -80,7 +85,8 @@ function fromStructures(structures, initially) {
       roles: selfServiceGroups(structures),
       openRoles: openRolesField(structures),
       initially: Admission$Reventless.initiallyName(initially),
-      policy: policyFields(structures)
+      policy: policyFields(structures),
+      counts: countsField(structures)
     };
   }
 }
@@ -115,6 +121,9 @@ function toJson(c) {
         p.close
       ]
     ]);
+  });
+  Stdlib_Option.forEach(c.counts, q => {
+    entries["counts"] = q;
   });
   return entries;
 }
@@ -164,6 +173,7 @@ export {
   openRolesField,
   selfServiceGroups,
   policyFields,
+  countsField,
   fromStructures,
   toJson,
   configEntry,

@@ -1728,6 +1728,10 @@ type Query {
   Registration_SignUpAudits(after: String, before: String, filter: Registration_SignUpAuditFilter, first: Int, includeRetired: Boolean, last: Int): Registration_SignUpAuditConnection!
   Registration_SignUpAuditsByIds(ids: [String!]!, includeRetired: Boolean): [Registration_SignUpAudit!]!
   Registration_SignUpAuditsRefs(ids: [ID!]!): [Registration_SignUpAuditRef!]!
+  Registration_VisitorRequestCount(id: ID!, includeRetired: Boolean): Registration_VisitorRequestCount
+  Registration_VisitorRequestCounts(after: String, before: String, filter: Registration_VisitorRequestCountFilter, first: Int, includeRetired: Boolean, last: Int): Registration_VisitorRequestCountConnection!
+  Registration_VisitorRequestCountsByIds(ids: [String!]!, includeRetired: Boolean): [Registration_VisitorRequestCount!]!
+  Registration_VisitorRequestCountsRefs(ids: [ID!]!): [Registration_VisitorRequestCountRef!]!
   geocode(text: String!): [GeocodeCandidate!]
   node(id: ID!): Node
 }
@@ -2025,6 +2029,40 @@ type Registration_SignUpAuditRef {
 enum Registration_SignUpAuditStatus {
   Failure
   Success
+}
+
+type Registration_VisitorRequestCount implements Node {
+  _change: RowChange
+  id: ID!
+  kind: String!
+  refused: Int
+  requests: Int
+  seconds: Int!
+  startsAt: String!
+}
+
+type Registration_VisitorRequestCountConnection {
+  edges: [Registration_VisitorRequestCountEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Registration_VisitorRequestCountEdge {
+  cursor: String!
+  node: Registration_VisitorRequestCount!
+}
+
+input Registration_VisitorRequestCountFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Registration_VisitorRequestCountRef {
+  id: ID!
+  image: String
+  label: String!
+  retired: Boolean!
+  retiredState: String
 }
 
 type RowChange {

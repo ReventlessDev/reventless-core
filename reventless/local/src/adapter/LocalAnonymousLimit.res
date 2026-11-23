@@ -44,7 +44,16 @@ let reset = () =>
   ->Dict.keysToArray
   ->Array.forEach(key => limiters->Dict.delete(key))
 
+/** Counts a request in the view of visitor request counts; set by the platform
+    once the view's storage exists. Counting goes on whether or not a limit is set. */
+let recorder: ref<
+  (~kind: Reventless.AnonymousRequestLimit.kind, ~admitted: bool) => unit,
+> = ref((~kind as _, ~admitted as _) => ())
+
 /** Whether one more request from `source` reaches `door`, a door or a view: always,
     where no limit is set for its kind. */
-let admit = (~kind, ~door: string, ~source: string): bool =>
-  current(~kind)->Option.mapOr(true, l => l.admit(~door, ~source))
+let admit = (~kind, ~door: string, ~source: string): bool => {
+  let admitted = current(~kind)->Option.mapOr(true, l => l.admit(~door, ~source))
+  recorder.contents(~kind, ~admitted)
+  admitted
+}

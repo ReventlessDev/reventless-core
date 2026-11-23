@@ -45,7 +45,7 @@ let stateSchema$1 = Sury.$Metadata_set(stateSchema, StateAnnotations$Reventless.
   metric: [],
   lifecycle: undefined,
   groupBy: undefined,
-  visibility: undefined,
+  visibility: "Internal",
   live: undefined,
   retired: undefined
 });
@@ -62,7 +62,7 @@ let moduleUrl = "@reventlessdev/reventless-registration/src/Registration/StateVi
 
 let authorization = "AllowAnonymous";
 
-let visibility = "Public";
+let visibility = "Internal";
 
 export {
   name,

@@ -101,8 +101,10 @@ import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventles
 import * as PgQueryResolver_Builder$ReventlessAws from "./adapter/QueryDb/PgQueryResolver_Builder.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 import * as Platform_ProvidedGroups$ReventlessAws from "./Platform_ProvidedGroups.res.mjs";
+import * as QueryDbStorage_DynamoDb$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDb.res.mjs";
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments_Projection.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
+import * as QueryDbResolvers_AppSync$ReventlessAws from "./adapter/QueryDb/QueryDbResolvers_AppSync.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
 import * as Capability_ObjectStore_S3$ReventlessAws from "./capability/Capability_ObjectStore_S3.res.mjs";
@@ -115,6 +117,7 @@ import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platfo
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
 import * as UiFragmentRegistry_Decision$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Decision.res.mjs";
+import * as VisitorRequestCount_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/VisitorRequestCount_Builder.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as Geocoder_AwsLocation_Resolver$ReventlessAws from "./adapter/Geocoder/Geocoder_AwsLocation_Resolver.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./plugin/stack/Plugin_ExtensionPoint_Builder.res.mjs";
@@ -510,6 +513,11 @@ function MakeWithConfig(Config) {
   let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let VisitorRequestCounts = VisitorRequestCount_Builder$ReventlessCore.Make({
+    make: QueryDbStorage_DynamoDb$ReventlessAws.make
+  })({
+    make: QueryDbResolvers_AppSync$ReventlessAws.make
+  });
   let Spec = {
     name: UiFragmentRegistry$ReventlessCore.name,
     moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
@@ -605,6 +613,14 @@ function MakeWithConfig(Config) {
     StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
     Upload_Claim_S3$ReventlessAws.finish(pluginName, claimStores, undefined, customOpts);
   }));
+  let hooks_visitorRequestCountsHook = (plugin, needed, opts) => {
+    if (needed) {
+      let outputs = Component$ReventlessCore.outputs(VisitorRequestCounts.make(resolveTargetApi(), resolveTargetApiRole(), opts));
+      AppSync_VisitorLimit$ReventlessAws.provideCounts(plugin, Stdlib_Option.mapOr(outputs.resources[0], Pulumi.output(""), r => r.name));
+      return outputs;
+    }
+    AppSync_VisitorLimit$ReventlessAws.provideCounts(plugin, Pulumi.output(""));
+  };
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
     let visitorFields = AppSync_VisitorApi$ReventlessAws.fields();
     let pluginFragment$1 = AppSync_VisitorSchema$ReventlessAws.without(pluginFragment, visitorFields);
@@ -705,6 +721,7 @@ function MakeWithConfig(Config) {
   };
   let hooks = {
     subscriptionInfraHook: hooks_subscriptionInfraHook,
+    visitorRequestCountsHook: hooks_visitorRequestCountsHook,
     preResolversSchemaHook: hooks_preResolversSchemaHook,
     preAdminResolversSchemaHook: hooks_preAdminResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
@@ -2139,6 +2156,11 @@ function Make($star) {
   let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let VisitorRequestCounts = VisitorRequestCount_Builder$ReventlessCore.Make({
+    make: QueryDbStorage_DynamoDb$ReventlessAws.make
+  })({
+    make: QueryDbResolvers_AppSync$ReventlessAws.make
+  });
   let Spec = {
     name: UiFragmentRegistry$ReventlessCore.name,
     moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
@@ -2234,6 +2256,14 @@ function Make($star) {
     StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
     Upload_Claim_S3$ReventlessAws.finish(pluginName, claimStores, undefined, customOpts);
   }));
+  let hooks_visitorRequestCountsHook = (plugin, needed, opts) => {
+    if (needed) {
+      let outputs = Component$ReventlessCore.outputs(VisitorRequestCounts.make(resolveTargetApi(), resolveTargetApiRole(), opts));
+      AppSync_VisitorLimit$ReventlessAws.provideCounts(plugin, Stdlib_Option.mapOr(outputs.resources[0], Pulumi.output(""), r => r.name));
+      return outputs;
+    }
+    AppSync_VisitorLimit$ReventlessAws.provideCounts(plugin, Pulumi.output(""));
+  };
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
     let visitorFields = AppSync_VisitorApi$ReventlessAws.fields();
     let pluginFragment$1 = AppSync_VisitorSchema$ReventlessAws.without(pluginFragment, visitorFields);
@@ -2334,6 +2364,7 @@ function Make($star) {
   };
   let hooks = {
     subscriptionInfraHook: hooks_subscriptionInfraHook,
+    visitorRequestCountsHook: hooks_visitorRequestCountsHook,
     preResolversSchemaHook: hooks_preResolversSchemaHook,
     preAdminResolversSchemaHook: hooks_preAdminResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,

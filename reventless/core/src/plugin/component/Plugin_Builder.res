@@ -296,7 +296,19 @@ module Make = (
         }
       })
 
-    let queryEntries = Array.concat(queryEntriesFromReadModels, dcbResult.queryEntries)
+    let domainQueryEntries = Array.concat(queryEntriesFromReadModels, dcbResult.queryEntries)
+
+    // A plugin with a door or view for visitors gets a view of how many requests
+    // they made, where the platform builds one.
+    let countsVisitorRequests =
+      Spec.hooks.visitorRequestCountsHook->Option.isSome &&
+        VisitorRequestCount_Builder.hasVisitorFields(
+          ~mutationEntries,
+          ~queryEntries=domainQueryEntries,
+        )
+    let queryEntries = countsVisitorRequests
+      ? domainQueryEntries->Array.concat([VisitorRequestCount_Builder.queryEntry(~plugin=name)])
+      : domainQueryEntries
 
     let eventLogEntriesFromAggregates =
       aggregates->Array.map((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
@@ -429,6 +441,9 @@ module Make = (
     dcbResult.outboundTranslationSlicesOutputs
     ->Dict.toArray
     ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k ++ "Todo", v.queryDb))
+    Spec.hooks.visitorRequestCountsHook
+    ->Option.flatMap(make => make(~plugin=name, ~needed=countsVisitorRequests, ~opts))
+    ->Option.forEach(db => allQueryDbs->Dict.set(VisitorRequestCount_Builder.name, db))
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     {

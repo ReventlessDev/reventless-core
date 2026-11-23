@@ -769,6 +769,12 @@ module MakeWithConfig = (
     include OutboundTranslationSlice_Builder.Make(ApiConfig)
   }
   module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(ApiConfig)
+  // A plugin's view of how many requests visitors made, which its command function
+  // writes to as it counts them.
+  module VisitorRequestCounts = ReventlessCore.VisitorRequestCount_Builder.Make(
+    QueryDbStorage.DynamoDb,
+    QueryDbResolvers.AppSync,
+  )
 
   // Admin UI-fragment registry slices (docs/plans/done/event-sourced-fragment-registries.md): the
   // platform UI-fragment registry hosted as admin DCB slices sharing the admin DcbEventLog.
@@ -835,6 +841,25 @@ module MakeWithConfig = (
   let schedulerRoleUrnRef = ref(Pulumi.Output.make(""))
 
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
+    // The view's table is the first of its resources; the command function, set up
+    // before the view is made, is handed its name, or `""` for a plugin with none.
+    visitorRequestCountsHook: (~plugin, ~needed, ~opts) =>
+      if needed {
+        let outputs =
+          VisitorRequestCounts.make(
+            ~api=ApiConfig.api(),
+            ~apiRole=ApiConfig.apiRole(),
+            ~opts,
+          )->ReventlessCore.Component.outputs
+        AppSync_VisitorLimit.provideCounts(
+          ~plugin,
+          outputs.resources->Array.get(0)->Option.mapOr(Pulumi.Output.make(""), r => r.name),
+        )
+        Some(outputs)
+      } else {
+        AppSync_VisitorLimit.provideCounts(~plugin, Pulumi.Output.make(""))
+        None
+      },
     // AWS uses Interstack for admin extension points — leave ref at empty dict.
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
     // Platform context — populated by makePlatform/deployPlugin before plugin build.

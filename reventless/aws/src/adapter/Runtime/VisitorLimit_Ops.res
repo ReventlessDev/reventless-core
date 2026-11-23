@@ -32,7 +32,7 @@ let sourceOf = (forwardedFor: Nullable.t<string>): string =>
 /** Whether one more request from `source` reaches `door`, under the limit of its
     kind. A function handed no table has nothing to count in, and admits nobody: a
     door for visitors is not deployed without one. */
-let admitsAs = async (~kind, door: string, source: Nullable.t<string>): bool =>
+let limitAs = async (~kind, door: string, source: Nullable.t<string>): bool =>
   switch NodeProcess.env->Dict.get(tableVariable) {
   | None | Some("") => false
   | Some(tableName) =>
@@ -45,6 +45,19 @@ let admitsAs = async (~kind, door: string, source: Nullable.t<string>): bool =>
       ~source=sourceOf(source),
     )
   }
+
+/** The limit's answer, with the request counted in the plugin's view of visitor
+    request counts while the limit is asked, and as refused after, where it was. */
+let admitsAs = async (~kind, door: string, source: Nullable.t<string>): bool => {
+  let (admitted, ()) = await Promise.all2((
+    limitAs(~kind, door, source),
+    VisitorRequestCount_Ops.request(~kind),
+  ))
+  if !admitted {
+    await VisitorRequestCount_Ops.refused(~kind)
+  }
+  admitted
+}
 
 /** A door's check, for the entry point. */
 let admitsDoor = (door, source) => admitsAs(~kind=Door, door, source)

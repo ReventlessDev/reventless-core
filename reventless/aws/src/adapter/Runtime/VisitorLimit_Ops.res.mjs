@@ -8,6 +8,7 @@ import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/c
 import * as AnonymousRequestLimit$Reventless from "@reventlessdev/reventless-spec/src/types/AnonymousRequestLimit.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as Secrets_Node_Backend$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Secrets/Secrets_Node_Backend.res.mjs";
+import * as VisitorRequestCount_Ops$ReventlessAws from "./VisitorRequestCount_Ops.res.mjs";
 import * as AnonymousLimiter_DynamoDb$ReventlessAws from "../Throttle/AnonymousLimiter_DynamoDb.res.mjs";
 
 let tableVariable = "ANONYMOUS_LIMIT_TABLE";
@@ -32,13 +33,25 @@ function sourceOf(forwardedFor) {
   }
 }
 
-async function admitsAs(kind, door, source) {
+async function limitAs(kind, door, source) {
   let tableName = process.env[tableVariable];
   if (tableName !== undefined && tableName !== "") {
     return await AnonymousLimiter_DynamoDb$ReventlessAws.admit(AnonymousLimiter_DynamoDb$ReventlessAws.dynamoDb(tableName), limit(kind), address => Secrets_Node_Backend$ReventlessCore.provider.fingerprint(purpose, address), door, sourceOf(source), undefined);
   } else {
     return false;
   }
+}
+
+async function admitsAs(kind, door, source) {
+  let match = await Promise.all([
+    limitAs(kind, door, source),
+    VisitorRequestCount_Ops$ReventlessAws.request(kind, undefined)
+  ]);
+  let admitted = match[0];
+  if (!admitted) {
+    await VisitorRequestCount_Ops$ReventlessAws.refused(kind, undefined);
+  }
+  return admitted;
 }
 
 function admitsDoor(door, source) {
@@ -64,6 +77,7 @@ export {
   purpose,
   limit,
   sourceOf,
+  limitAs,
   admitsAs,
   admitsDoor,
   admitsView,

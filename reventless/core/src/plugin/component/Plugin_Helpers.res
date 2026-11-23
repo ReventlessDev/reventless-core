@@ -1005,6 +1005,14 @@ type platformHooks = {
   // Event-history query resolvers — the read counterpart of the Source A
   // subscription (see Plugin_EventQuerySchema).
   eventQueryResolverHook?: eventQueryRegistrationParams => unit,
+  // The plugin's view of visitor request counts, built where `needed` (the plugin
+  // has a door or view for visitors). Called on every plugin, so a platform that
+  // waits on the view learns when there is none.
+  visitorRequestCountsHook?: (
+    ~plugin: string,
+    ~needed: bool,
+    ~opts: Pulumi.ComponentResource.options,
+  ) => option<ReventlessInfra.QueryDb.outputs>,
   // ── AppSync resolver creation (AWS) ───────────────────────────────────
   preResolversSchemaHook?: (
     ~name: string,

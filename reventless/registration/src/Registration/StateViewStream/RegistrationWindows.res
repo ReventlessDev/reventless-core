@@ -8,9 +8,13 @@
 // A role with no row is open, since nothing recorded about a self-service role
 // is open; the shell learns which roles are self-service from the platform's
 // configuration and reads this view for the exceptions.
+//
+// Internal: the sign-in page reads it, and no menu offers it. What an
+// administrator reads about a window is `RegistrationOpenings`.
 
 @@reventless.spec
 @@reventless.authorize(AllowAnonymous)
+@@reventless.visibility(Internal)
 
 @schema
 type state = {

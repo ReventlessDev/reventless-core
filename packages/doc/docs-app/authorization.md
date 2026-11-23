@@ -52,6 +52,17 @@ visitors, with the defaults above when unset. The local platform limits nothing
 unless a variable is set: it is where an app is built, and a limit there only gets
 in the way. Set one to see the limit at work.
 
+Every request is also counted, admitted or refused, per minute and per hour, in a
+view the framework gives each plugin with a door or view for visitors:
+`<Plugin>_VisitorRequestCount`, readable by the deployment's operators only. Its
+rows are keyed `door/60/<start>` or `view/3600/<start>`: the kind, the bucket's
+length in seconds and its start in seconds since the epoch. A reader asks
+`<Plugin>_VisitorRequestCountsByIds` for exactly the buckets it needs, such as the
+minutes of the first hour since something began and every hour after; a bucket
+nobody reached has no row. Minute rows are kept for a week and hour rows for forty
+days. One more row per kind, `door/0/0` and `view/0/0`, holds every request since
+counting began and is kept for good. The rule for the ids is `Reventless.VisitorRequestCount.idsSince`.
+
 How often an *address* may be written to is a different limit and belongs to the
 domain: count it in a `decide`, where it is recorded and survives a replay.
 
@@ -355,6 +366,7 @@ can see what the component is doing:
 | `<Slice>Todo` | an automation, an outbound translation | the work it has still to do |
 | `<Slice>Schedule` | an automation that runs on a time | when it runs next, for each key |
 | `<Slice>Audit` | an inbound translation | what it received, and what came of it |
+| `VisitorRequestCount` | a plugin with a door or view for visitors | how many requests visitors made, per minute and hour |
 
 Each one has a list query, such as `Ordering_NotificationIntakeTodos`. These rows
 name your customers, your orders and the times your customers are written to, so

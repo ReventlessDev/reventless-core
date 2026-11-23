@@ -130,9 +130,15 @@ let forDcbCommandTopic = (
     // counts their requests: it is handed the count table and granted its one call.
     let visitorLimitTable =
       AppSync_VisitorApi.hosted() && !isAsync ? Some(AppSync_VisitorLimit.table(~opts={})) : None
-    visitorLimitTable->Option.forEach(table =>
+    visitorLimitTable->Option.forEach(table => {
       envVars->Dict.set(VisitorLimit_Ops.tableVariable, table.name->Pulumi.Output.asInput)
-    )
+      // And counts them in the plugin's view of visitor request counts, `""` where
+      // the plugin has no door or view for visitors.
+      envVars->Dict.set(
+        VisitorRequestCount_Ops.tableVariable,
+        AppSync_VisitorLimit.countsTable(pluginName)->Pulumi.Output.asInput,
+      )
+    })
     let webhookSecrets = isAsync ? None : webhookSecrets
     webhookSecrets->Option.forEach(secrets =>
       secrets->Dict.forEachWithKey((value, key) =>
@@ -343,6 +349,19 @@ let forDcbCommandTopic = (
           policy: table.arn
           ->Pulumi.Output.apply(arn =>
             AppSync_VisitorLimit.policy(~id=`${name}-visitorLimitPolicy`, arn)
+          )
+          ->Pulumi.Output.asInput,
+          role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+        },
+      )
+      // Made either way, like the variable: for a plugin with no view the
+      // table name is `""`, and the grant names no table.
+      let _ = PulumiAws.IAM.RolePolicy.make(
+        ~name=`${name}-visitorRequestCounts`,
+        ~args={
+          policy: AppSync_VisitorLimit.countsTable(pluginName)
+          ->Pulumi.Output.apply(tableName =>
+            AppSync_VisitorLimit.countsPolicy(~id=`${name}-visitorRequestCountsPolicy`, tableName)
           )
           ->Pulumi.Output.asInput,
           role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,

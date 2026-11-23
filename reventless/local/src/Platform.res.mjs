@@ -86,6 +86,8 @@ import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Serve
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
+import * as LocalAnonymousLimit$ReventlessLocal from "./adapter/LocalAnonymousLimit.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "./adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 import * as LocalWebhookSecrets$ReventlessLocal from "./adapter/Webhook/LocalWebhookSecrets.res.mjs";
 import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
@@ -114,12 +116,15 @@ import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventl
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
+import * as LocalVisitorRequestCount$ReventlessLocal from "./adapter/LocalVisitorRequestCount.res.mjs";
 import * as Platform_SelfRegistration$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_SelfRegistration.res.mjs";
+import * as QueryDbResolvers_GraphQL$ReventlessLocal from "./adapter/QueryDb/QueryDbResolvers_GraphQL.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as UiFragmentRegistry_Decision$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChange/UiFragmentRegistry_Decision.res.mjs";
+import * as VisitorRequestCount_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/VisitorRequestCount_Builder.res.mjs";
 import * as Capability_Geocoding_Places$ReventlessLocal from "./capability/Capability_Geocoding_Places.res.mjs";
 import * as Platform_PluginStructuresApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_PluginStructuresApi.res.mjs";
 import * as EventHistoryResolvers_GraphQL$ReventlessLocal from "./adapter/EventHistory/EventHistoryResolvers_GraphQL.res.mjs";
@@ -257,6 +262,13 @@ function MakeWithConfig(Config) {
     }
   };
   let EventHistoryResolvers = EventHistoryResolvers_GraphQL$ReventlessLocal.Make(Bus);
+  let VisitorRequestCountStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
+  let VisitorRequestCountResolvers = QueryDbResolvers_GraphQL$ReventlessLocal.Make(Bus);
+  let VisitorRequestCounts = VisitorRequestCount_Builder$ReventlessCore.Make({
+    make: VisitorRequestCountStorage.make
+  })({
+    make: VisitorRequestCountResolvers.make
+  });
   let hooks_mutationResolverHook = (kind, fields, commandSchema, authorizationOf) => {
     let server = resolveTargetGraphQL();
     if (kind === "Aggregate") {
@@ -475,6 +487,14 @@ function MakeWithConfig(Config) {
     params.eventLogEntries.forEach(entry => LocalEventLogRead$ReventlessLocal.notePlugin(entry.busKey, params.pluginName));
     EventHistoryResolvers.register(resolveTargetGraphQL(), params);
   };
+  let hooks_visitorRequestCountsHook = (param, needed, opts) => {
+    if (!needed) {
+      return;
+    }
+    let outputs = Component$ReventlessCore.outputs(VisitorRequestCounts.make(undefined, undefined, opts));
+    LocalAnonymousLimit$ReventlessLocal.recorder.contents = LocalVisitorRequestCount$ReventlessLocal.make(() => Bus.getQueryDb(VisitorRequestCount_Builder$ReventlessCore.name));
+    return outputs;
+  };
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
   };
@@ -504,6 +524,7 @@ function MakeWithConfig(Config) {
     schemaTypeRegistrationHook: hooks_schemaTypeRegistrationHook,
     mcpSchemaRegistrationHook: hooks_mcpSchemaRegistrationHook,
     eventQueryResolverHook: hooks_eventQueryResolverHook,
+    visitorRequestCountsHook: hooks_visitorRequestCountsHook,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
     schedulerRoleUrn: hooks_schedulerRoleUrn,
@@ -2113,6 +2134,13 @@ function Make($star) {
     }
   };
   let EventHistoryResolvers = EventHistoryResolvers_GraphQL$ReventlessLocal.Make(Bus);
+  let VisitorRequestCountStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
+  let VisitorRequestCountResolvers = QueryDbResolvers_GraphQL$ReventlessLocal.Make(Bus);
+  let VisitorRequestCounts = VisitorRequestCount_Builder$ReventlessCore.Make({
+    make: VisitorRequestCountStorage.make
+  })({
+    make: VisitorRequestCountResolvers.make
+  });
   let hooks_mutationResolverHook = (kind, fields, commandSchema, authorizationOf) => {
     let server = resolveTargetGraphQL();
     if (kind === "Aggregate") {
@@ -2331,6 +2359,14 @@ function Make($star) {
     params.eventLogEntries.forEach(entry => LocalEventLogRead$ReventlessLocal.notePlugin(entry.busKey, params.pluginName));
     EventHistoryResolvers.register(resolveTargetGraphQL(), params);
   };
+  let hooks_visitorRequestCountsHook = (param, needed, opts) => {
+    if (!needed) {
+      return;
+    }
+    let outputs = Component$ReventlessCore.outputs(VisitorRequestCounts.make(undefined, undefined, opts));
+    LocalAnonymousLimit$ReventlessLocal.recorder.contents = LocalVisitorRequestCount$ReventlessLocal.make(() => Bus.getQueryDb(VisitorRequestCount_Builder$ReventlessCore.name));
+    return outputs;
+  };
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
   };
@@ -2360,6 +2396,7 @@ function Make($star) {
     schemaTypeRegistrationHook: hooks_schemaTypeRegistrationHook,
     mcpSchemaRegistrationHook: hooks_mcpSchemaRegistrationHook,
     eventQueryResolverHook: hooks_eventQueryResolverHook,
+    visitorRequestCountsHook: hooks_visitorRequestCountsHook,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
     schedulerRoleUrn: hooks_schedulerRoleUrn,

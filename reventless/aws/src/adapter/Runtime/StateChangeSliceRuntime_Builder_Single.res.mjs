@@ -21,6 +21,7 @@ import * as AppSync_VisitorLimit$ReventlessAws from "../../components/Api/AppSyn
 import * as Stash_DynamoDb_Grant$ReventlessAws from "../Stash/Stash_DynamoDb_Grant.res.mjs";
 import * as Util_LambdaEnvBudget$ReventlessAws from "../../util/Util_LambdaEnvBudget.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
+import * as VisitorRequestCount_Ops$ReventlessAws from "./VisitorRequestCount_Ops.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -77,6 +78,7 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
   let visitorLimitTable = AppSync_VisitorApi$ReventlessAws.hosted() && !isAsync ? AppSync_VisitorLimit$ReventlessAws.table({}) : undefined;
   Stdlib_Option.forEach(visitorLimitTable, table => {
     envVars[VisitorLimit_Ops$ReventlessAws.tableVariable] = table.name;
+    envVars[VisitorRequestCount_Ops$ReventlessAws.tableVariable] = AppSync_VisitorLimit$ReventlessAws.countsTable(pluginName);
   });
   let webhookSecrets$1 = isAsync ? undefined : webhookSecrets;
   Stdlib_Option.forEach(webhookSecrets$1, secrets => Stdlib_Dict.forEachWithKey(secrets, (value, key) => {
@@ -156,6 +158,10 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
   Stdlib_Option.forEach(visitorLimitTable, table => {
     new (Aws.iam.RolePolicy)(name + `-visitorLimit`, {
       policy: table.arn.apply(arn => AppSync_VisitorLimit$ReventlessAws.policy(name + `-visitorLimitPolicy`, arn)),
+      role: runtime.parts.lambdaRole.id
+    });
+    new (Aws.iam.RolePolicy)(name + `-visitorRequestCounts`, {
+      policy: AppSync_VisitorLimit$ReventlessAws.countsTable(pluginName).apply(tableName => AppSync_VisitorLimit$ReventlessAws.countsPolicy(name + `-visitorRequestCountsPolicy`, tableName)),
       role: runtime.parts.lambdaRole.id
     });
   });

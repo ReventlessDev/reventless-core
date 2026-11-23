@@ -54,6 +54,40 @@ function policy(id, arn) {
     }]));
 }
 
+let countsCells = {};
+
+function countsCell(plugin) {
+  let cell = countsCells[plugin];
+  if (cell !== undefined) {
+    return cell;
+  }
+  let resolver = {
+    contents: param => {}
+  };
+  let table = Pulumi.output(new Promise((resolve, param) => {
+    resolver.contents = resolve;
+  }));
+  let cell_resolve = name => resolver.contents(name);
+  let cell$1 = {
+    table: table,
+    resolve: cell_resolve
+  };
+  countsCells[plugin] = cell$1;
+  return cell$1;
+}
+
+function countsTable(plugin) {
+  return countsCell(plugin).table;
+}
+
+function provideCounts(plugin, tableName) {
+  countsCell(plugin).resolve(tableName);
+}
+
+function countsPolicy(id, tableName) {
+  return policy(id, `arn:aws:dynamodb:*:*:table/` + tableName);
+}
+
 let dataSourceRef = {
   contents: undefined
 };
@@ -199,6 +233,11 @@ export {
   table,
   actions,
   policy,
+  countsCells,
+  countsCell,
+  countsTable,
+  provideCounts,
+  countsPolicy,
   dataSourceRef,
   buildsCommandFunction,
   dataSource,

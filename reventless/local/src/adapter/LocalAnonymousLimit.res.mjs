@@ -42,8 +42,14 @@ function reset() {
   Object.keys(limiters).forEach(key => Stdlib_Dict.$$delete(limiters, key));
 }
 
+let recorder = {
+  contents: (param, param$1) => {}
+};
+
 function admit(kind, door, source) {
-  return Stdlib_Option.mapOr(current(kind), true, l => l.admit(door, source));
+  let admitted = Stdlib_Option.mapOr(current(kind), true, l => l.admit(door, source));
+  recorder.contents(kind, admitted);
+  return admitted;
 }
 
 export {
@@ -51,6 +57,7 @@ export {
   configured,
   current,
   reset,
+  recorder,
   admit,
 }
 /* No side effect */

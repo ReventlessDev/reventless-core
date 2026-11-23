@@ -22,6 +22,9 @@ type config = {
   /** The mutations an administrator opens and closes a role with, where a plugin
       marks its policy. */
   policy?: policy,
+  /** The query reading, by id, how many requests visitors made to the doors and
+      views of the plugin that starts a registration (`Reventless.VisitorRequestCount`). */
+  counts?: string,
 }
 
 let marked = (
@@ -84,6 +87,18 @@ let policyFields = (structures: array<(string, Reventless.Plugin.pluginStructure
     }
   })
 
+/** The visitor request counts' query of the plugin whose door starts a
+    registration: it has a door for visitors, so it has the view. */
+let countsField = (structures: array<(string, Reventless.Plugin.pluginStructure)>): option<
+  string,
+> =>
+  marked(structures, Start)->Option.map(((plugin, _)) =>
+    Api_Naming.queryFieldNamesForSliceQueryDb(
+      ~plugin,
+      ~queryDbName=Reventless.VisitorRequestCount.queryDbName,
+    ).listFieldName ++ "ByIds"
+  )
+
 /** The configuration, where a deployment has a door that starts and one that
     completes a registration, on a platform whose self-service roles start
     `initially`. */
@@ -100,6 +115,7 @@ let fromStructures = (
       openRoles: ?openRolesField(structures),
       initially: Reventless.Admission.initiallyName(initially),
       policy: ?policyFields(structures),
+      counts: ?countsField(structures),
     })
   | _ => None
   }
@@ -123,6 +139,7 @@ let toJson = (c: config): JSON.t => {
       ),
     )
   )
+  c.counts->Option.forEach(q => entries->Dict.set("counts", JSON.Encode.string(q)))
   JSON.Encode.object(entries)
 }
 

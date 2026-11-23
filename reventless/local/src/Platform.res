@@ -296,10 +296,32 @@ module MakeWithConfig = (
   // subscription bridge below streams, but historically and per entity.
   module EventHistoryResolvers = EventHistoryResolvers_GraphQL.Make(Bus)
 
+  // A plugin's view of how many requests visitors made. The local limiter counts in
+  // it through this platform's bus, under the view's name: the recorder is set as
+  // the view is made, since a process may hold more than one platform.
+  module VisitorRequestCountStorage = LocalQueryDbStorage.Make(Bus)
+  module VisitorRequestCountResolvers = QueryDbResolvers_GraphQL.Make(Bus)
+  module VisitorRequestCounts = ReventlessCore.VisitorRequestCount_Builder.Make(
+    VisitorRequestCountStorage,
+    VisitorRequestCountResolvers,
+  )
+
   // Platform hook record — callbacks known at MakeWithConfig time plus a
   // mutable ref for admin extension points (set by makePlatform/deployPlugin
   // after Admin.construct returns, before plugins are built).
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
+    visitorRequestCountsHook: (~plugin as _, ~needed, ~opts) =>
+      if needed {
+        let outputs =
+          VisitorRequestCounts.make(~api=(), ~apiRole=(), ~opts)->ReventlessCore.Component.outputs
+        LocalAnonymousLimit.recorder :=
+          LocalVisitorRequestCount.make(~ops=() =>
+            Bus.getQueryDb(ReventlessCore.VisitorRequestCount_Builder.name)
+          )
+        Some(outputs)
+      } else {
+        None
+      },
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
     // Platform context — populated by makePlatform/deployPlugin before plugin build.
     scheduler: ref(None),

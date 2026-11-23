@@ -29,7 +29,7 @@ let registration: Reventless.Plugin.pluginStructure = {
 
 describe("Platform_SelfRegistration", () => {
   testSync(
-    "names the two doors by their mutation fields, the self-service groups, and the open-roles query",
+    "names the two doors by their mutation fields, the self-service groups, the open-roles query and the counts query",
     () =>
       expect(
         Platform_SelfRegistration.fromStructures(
@@ -43,6 +43,7 @@ describe("Platform_SelfRegistration", () => {
           roles: ["Shopper"],
           openRoles: "Registration_RegistrationWindows",
           initially: "closed",
+          counts: "Registration_VisitorRequestCountsByIds",
         }),
       ),
   )
@@ -95,10 +96,11 @@ describe("Platform_SelfRegistration", () => {
           open_: "Registration_OpenRegistration",
           close: "Registration_CloseRegistration",
         },
+        counts: "Registration_VisitorRequestCountsByIds",
       })
       ->Pair.second
       ->JSON.stringify,
-    )->toEqual(`{"start":"Registration_SignUp","complete":"Registration_CompleteRegistration","roles":["Shopper"],"openRoles":"Registration_RegistrationWindows","initially":"closed","policy":{"open":"Registration_OpenRegistration","close":"Registration_CloseRegistration"}}`)
+    )->toEqual(`{"start":"Registration_SignUp","complete":"Registration_CompleteRegistration","roles":["Shopper"],"openRoles":"Registration_RegistrationWindows","initially":"closed","policy":{"open":"Registration_OpenRegistration","close":"Registration_CloseRegistration"},"counts":"Registration_VisitorRequestCountsByIds"}`)
   )
 
   let command = (name): Reventless.Plugin.commandDef => {
