@@ -118,6 +118,11 @@
 # fabricated `0` factor would convert every stored number to nothing.
 .structure.quantities[].adds: boolean
 .structure.quantities[].name: string
+# `overTime` is optional and NEW within it: a stored quantity without it heals to
+# `None`, and only core writes one, with both parts. Required inside it because a
+# relation is its quantity and its seconds; a fabricated `0` would divide by zero.
+.structure.quantities[].overTime.quantity: string
+.structure.quantities[].overTime.seconds: number
 .structure.quantities[].units[].code: string
 .structure.quantities[].units[].factor: number
 .structure.quantities[].units[].plural: string

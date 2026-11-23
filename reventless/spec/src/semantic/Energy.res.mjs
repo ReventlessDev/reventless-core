@@ -14,6 +14,8 @@ let include = Quantity$Reventless.Make({
   units: units
 });
 
+let def = include.def;
+
 let in_ = include.in_;
 
 let wattHour = in_("Wh");
@@ -24,7 +26,62 @@ let megawattHour = in_("MWh");
 
 let gigawattHour = in_("GWh");
 
-let def = include.def;
+function ofPower(power, from, over, to) {
+  return Quantity$Reventless.accumulate(def, Quantity$Reventless.power, power, from, over, to);
+}
+
+function decimalsOf(x) {
+  let written = x.toString();
+  if (written.includes("e")) {
+    return;
+  }
+  let i = written.indexOf(".");
+  if (i !== -1) {
+    return (written.length - i | 0) - 1 | 0;
+  } else {
+    return 0;
+  }
+}
+
+function between(earlier, later) {
+  if (!isFinite(earlier) || !isFinite(later)) {
+    return {
+      TAG: "Error",
+      _0: `a meter reading is a finite number`
+    };
+  }
+  if (later < earlier) {
+    return {
+      TAG: "Error",
+      _0: `the later reading ` + later.toString() + ` is lower than the earlier ` + (earlier.toString() + `: a register that only counts up went back`)
+    };
+  }
+  let match = decimalsOf(earlier);
+  let match$1 = decimalsOf(later);
+  if (match === undefined) {
+    return {
+      TAG: "Ok",
+      _0: later - earlier
+    };
+  }
+  if (match$1 === undefined) {
+    return {
+      TAG: "Ok",
+      _0: later - earlier
+    };
+  }
+  if (Math.max(match, match$1) > 12) {
+    return {
+      TAG: "Ok",
+      _0: later - earlier
+    };
+  }
+  let scale = Math.pow(10.0, Math.max(match, match$1));
+  return {
+    TAG: "Ok",
+    _0: Math.round((later - earlier) * scale) / scale
+  };
+}
 
 let convert = include.convert;
 
@@ -36,5 +93,8 @@ export {
   kilowattHour,
   megawattHour,
   gigawattHour,
+  ofPower,
+  decimalsOf,
+  between,
 }
 /* include Not a pure module */

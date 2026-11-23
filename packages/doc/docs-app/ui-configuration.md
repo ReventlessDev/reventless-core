@@ -260,6 +260,22 @@ let litre = Volume.in_("l")
 A plugin never redefines a standard quantity: a changed factor would change what
 stored numbers mean.
 
+Energy is power held over time, and its definition says so (`overTime`: a watt
+held for 3600 seconds is a watt-hour), so a reader of the plugin's quantities
+can tell. Three functions use it, each giving a `result` and refusing a unit of
+the wrong quantity; a duration is `Reventless.Duration.t`, in seconds:
+
+```rescript
+Reventless.Energy.ofPower(22.0, ~from="kW", ~over=1800, ~to="kWh") // Ok(11.0)
+Reventless.Power.average(11.0, ~from="kWh", ~over=1800, ~to="kW")  // Ok(22.0)
+Reventless.Energy.between(1228.3, 1240.7)                          // Ok(12.4), in kWh
+```
+
+`Power.average` refuses a duration of zero or less. `Energy.between` reads two
+readings of a meter's register, which only counts up, and refuses a later
+reading lower than the earlier: a register that went back is a fault, never
+negative energy.
+
 #### A price per unit
 
 A price per unit is money per a quantity's unit. The value is `Money.t`, with its

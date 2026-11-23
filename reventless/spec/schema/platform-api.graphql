@@ -370,7 +370,13 @@ type Platform_PublishedEventDef {
 type Platform_QuantityDef {
   adds: Boolean!
   name: String!
+  overTime: Platform_QuantityOverTimeDef
   units: [Platform_QuantityUnitDef!]!
+}
+
+type Platform_QuantityOverTimeDef {
+  quantity: String!
+  seconds: Float!
 }
 
 type Platform_QuantityUnitDef {

@@ -14,6 +14,8 @@ let include = Quantity$Reventless.Make({
   units: units
 });
 
+let def = include.def;
+
 let in_ = include.in_;
 
 let watt = in_("W");
@@ -22,7 +24,9 @@ let kilowatt = in_("kW");
 
 let megawatt = in_("MW");
 
-let def = include.def;
+function average(energy, from, over, to) {
+  return Quantity$Reventless.average(Quantity$Reventless.energy, def, energy, from, over, to);
+}
 
 let convert = include.convert;
 
@@ -33,5 +37,6 @@ export {
   watt,
   kilowatt,
   megawatt,
+  average,
 }
 /* include Not a pure module */

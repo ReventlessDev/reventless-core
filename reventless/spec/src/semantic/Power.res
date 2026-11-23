@@ -18,3 +18,18 @@ include Quantity.Make({
 let watt = in_("W")
 let kilowatt = in_("kW")
 let megawatt = in_("MW")
+
+/** Energy over a duration, as the power that held constant delivers it: 11 kWh
+    over half an hour (1800 seconds) is 22 kW on average. `from` is a unit of
+    energy, `to` one of power; a unit of another quantity is refused, and so is a
+    duration of zero or less, which has no average.
+
+    @example
+    ```rescript
+    Power.average(11.0, ~from="kWh", ~over=1800, ~to="kW") // Ok(22.0)
+    ```
+*/
+let average = (energy: Quantity.t, ~from: string, ~over: Duration.t, ~to: string): result<
+  t,
+  string,
+> => Quantity.average(~total=Quantity.energy, ~rate=def, energy, ~from, ~over, ~to)

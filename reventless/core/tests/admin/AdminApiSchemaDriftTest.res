@@ -413,6 +413,19 @@ let guards: array<guard> = [
     recordOnly: [],
   },
   {
+    gqlType: "Platform_QuantityOverTimeDef",
+    sdlTypes: componentSdl,
+    recordFields: schemaKeys(Reventless.Quantity.overTimeSchema),
+    wireFields: jsonKeys(
+      switch Platform_ComponentDefinitionsApi.encodeQuantityDef(Reventless.Quantity.energy) {
+      | JSON.Object(d) => d->Dict.get("overTime")->Option.getOr(JSON.Encode.null)
+      | _ => JSON.Encode.null
+      },
+    ),
+    wireOnly: [],
+    recordOnly: [],
+  },
+  {
     gqlType: "Platform_QuantityUnitDef",
     sdlTypes: componentSdl,
     recordFields: schemaKeys(Reventless.Quantity.unitDefSchema),

@@ -27,11 +27,18 @@ type t = float
 @schema
 type unitDef = {code: string, factor: float, words: string, plural: string}
 
-/** A quantity: its name (`energy`), whether two values may be summed (energy
-    delivered adds up, a temperature does not), and its units, first the one the
-    factors count from. */
+/** How a quantity is another held over time: energy is power held for a
+    duration. The quantity's first unit is the other's first unit held for
+    `seconds` seconds, so energy's is `{quantity: "power", seconds: 3600.0}`: a
+    watt held for an hour is a watt-hour. */
 @schema
-type def = {name: string, adds: bool, units: array<unitDef>}
+type overTime = {quantity: string, seconds: float}
+
+/** A quantity: its name (`energy`), whether two values may be summed (energy
+    delivered adds up, a temperature does not), its units, first the one the
+    factors count from, and, where it is another held over time, which. */
+@schema
+type def = {name: string, adds: bool, units: array<unitDef>, overTime?: overTime}
 
 // ── The standard set ──────────────────────────────────────────────────────────
 
@@ -44,6 +51,7 @@ let energy: def = {
     {code: "MWh", factor: 1e6, words: "megawatt-hour", plural: "megawatt-hours"},
     {code: "GWh", factor: 1e9, words: "gigawatt-hour", plural: "gigawatt-hours"},
   ],
+  overTime: {quantity: "power", seconds: 3600.0},
 }
 
 // Power adds up as energy does: the loads on one connection sum to its load.
@@ -65,21 +73,34 @@ let isStandardName = (name: string): bool => standard->Array.some(q => q.name ==
 
 // ── Declaring one ─────────────────────────────────────────────────────────────
 
+// The same quantity, whether or not it says what it is held over time: a
+// quantity's module is built from its name and units alone.
+let sameUnits = (a: def, b: def): bool =>
+  a.name == b.name &&
+  a.adds == b.adds &&
+  a.units == b.units &&
+  (a.overTime == None || b.overTime == None || a.overTime == b.overTime)
+
 /** A quantity as a plugin declares it, checked: at least one unit, the first
     with factor 1, every factor finite and positive, no code twice, and no
-    standard quantity's name unless it is that quantity unchanged. */
+    standard quantity's name unless it is that quantity unchanged, which is then
+    core's own, with what it is held over time. Only core's quantities say that:
+    a plugin's own is never another held over time. */
 let declare = (q: def): result<def, string> => {
   let codes = q.units->Array.map(u => u.code)
   let twice = codes->Array.filterWithIndex((code, i) => codes->Array.indexOf(code) != i)
-  if q.name == "" {
-    Error("a quantity needs a name")
-  } else if isStandardName(q.name) && !(standard->Array.some(s => s == q)) {
+  switch standard->Array.find(s => sameUnits(s, q)) {
+  | Some(s) => Ok(s)
+  | None if q.name == "" => Error("a quantity needs a name")
+  | None if isStandardName(q.name) =>
     Error(
       `"${q.name}" is a quantity core ships; a plugin adds quantities and never redefines ` ++
       `one, since a changed factor would change what stored numbers mean. Use ` ++
       `core's ${q.name}, or give this quantity another name.`,
     )
-  } else {
+  | None if q.overTime != None =>
+    Error(`the quantity "${q.name}" says it is another held over time; only core's energy does`)
+  | None =>
     switch q.units {
     | [] => Error(`the quantity "${q.name}" needs at least one unit`)
     | units =>
@@ -128,6 +149,79 @@ let convert = (q: def, value: float, ~from: string, ~to: string): result<float, 
     Ok(f.factor >= t.factor ? value *. (f.factor /. t.factor) : value /. (t.factor /. f.factor))
   | (None, _) => Error(`${from} is not a unit of ${q.name}`)
   | (_, None) => Error(`${to} is not a unit of ${q.name}`)
+  }
+
+// ── Held over time ────────────────────────────────────────────────────────────
+
+/** How many seconds of `rate`, in its first unit, make one of `total`'s first
+    unit: 3600 for energy over power. Refused where `total` is not `rate` held
+    over time. */
+let secondsOver = (~total: def, ~rate: def): result<float, string> =>
+  switch total.overTime {
+  | Some({quantity, seconds}) if quantity == rate.name => Ok(seconds)
+  | _ => Error(`${total.name} is not ${rate.name} held over time`)
+  }
+
+/** A rate held constant over a duration, as its total: 22 kW for half an hour
+    is 11 kWh. Converts through each quantity's first unit. A negative duration
+    is refused; over none, the total is zero. */
+let accumulate = (
+  ~total: def,
+  ~rate: def,
+  value: float,
+  ~from: string,
+  ~over: Duration.t,
+  ~to: string,
+): result<float, string> =>
+  if over < 0 {
+    Error(`a duration cannot be negative, got ${Int.toString(over)} seconds`)
+  } else {
+    secondsOver(~total, ~rate)->Result.flatMap(seconds =>
+      convert(
+        rate,
+        value,
+        ~from,
+        ~to=(rate.units->Array.getUnsafe(0)).code,
+      )->Result.flatMap(first =>
+        convert(
+          total,
+          first *. Int.toFloat(over) /. seconds,
+          ~from=(total.units->Array.getUnsafe(0)).code,
+          ~to,
+        )
+      )
+    )
+  }
+
+/** A total over a duration, as the rate that held constant gives it: 11 kWh
+    over half an hour is 22 kW on average. Converts through each quantity's first
+    unit. A duration of zero or less has no rate and is refused. */
+let average = (
+  ~total: def,
+  ~rate: def,
+  value: float,
+  ~from: string,
+  ~over: Duration.t,
+  ~to: string,
+): result<float, string> =>
+  if over <= 0 {
+    Error(`an average needs a duration longer than zero, got ${Int.toString(over)} seconds`)
+  } else {
+    secondsOver(~total, ~rate)->Result.flatMap(seconds =>
+      convert(
+        total,
+        value,
+        ~from,
+        ~to=(total.units->Array.getUnsafe(0)).code,
+      )->Result.flatMap(first =>
+        convert(
+          rate,
+          first *. seconds /. Int.toFloat(over),
+          ~from=(rate.units->Array.getUnsafe(0)).code,
+          ~to,
+        )
+      )
+    )
   }
 
 // ── The schema ────────────────────────────────────────────────────────────────

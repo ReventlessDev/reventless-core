@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Sury from "sury";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Semantic$Reventless from "./Semantic.res.mjs";
@@ -14,10 +15,16 @@ let unitDefSchema = Sury.$schema(s => ({
   plural: s.m(Sury.string)
 }));
 
+let overTimeSchema = Sury.$schema(s => ({
+  quantity: s.m(Sury.string),
+  seconds: s.m(Sury.number)
+}));
+
 let defSchema = Sury.$schema(s => ({
   name: s.m(Sury.string),
   adds: s.m(Sury.boolean),
-  units: s.m(Sury.array(unitDefSchema))
+  units: s.m(Sury.array(unitDefSchema)),
+  overTime: s.m(Sury.$option(overTimeSchema))
 }));
 
 let energy_units = [
@@ -47,10 +54,16 @@ let energy_units = [
   }
 ];
 
+let energy_overTime = {
+  quantity: "power",
+  seconds: 3600.0
+};
+
 let energy = {
   name: "energy",
   adds: true,
-  units: energy_units
+  units: energy_units,
+  overTime: energy_overTime
 };
 
 let power_units = [
@@ -89,19 +102,44 @@ function isStandardName(name) {
   return standard.some(q => q.name === name);
 }
 
+function sameUnits(a, b) {
+  if (a.name === b.name && a.adds === b.adds && Primitive_object.equal(a.units, b.units)) {
+    if (a.overTime === undefined || b.overTime === undefined) {
+      return true;
+    } else {
+      return Primitive_object.equal(a.overTime, b.overTime);
+    }
+  } else {
+    return false;
+  }
+}
+
 function declare(q) {
   let codes = q.units.map(u => u.code);
   let twice = codes.filter((code, i) => codes.indexOf(code) !== i);
+  let s = standard.find(s => sameUnits(s, q));
+  if (s !== undefined) {
+    return {
+      TAG: "Ok",
+      _0: s
+    };
+  }
   if (q.name === "") {
     return {
       TAG: "Error",
       _0: "a quantity needs a name"
     };
   }
-  if (isStandardName(q.name) && !standard.some(s => Primitive_object.equal(s, q))) {
+  if (isStandardName(q.name)) {
     return {
       TAG: "Error",
       _0: `"` + q.name + `" is a quantity core ships; a plugin adds quantities and never redefines one, since a changed factor would change what stored numbers mean. Use ` + (`core's ` + q.name + `, or give this quantity another name.`)
+    };
+  }
+  if (q.overTime !== undefined) {
+    return {
+      TAG: "Error",
+      _0: `the quantity "` + q.name + `" says it is another held over time; only core's energy does`
     };
   }
   let units = q.units;
@@ -178,6 +216,42 @@ function convert(q, value, from, to) {
       TAG: "Error",
       _0: from + ` is not a unit of ` + q.name
     };
+  }
+}
+
+function secondsOver(total, rate) {
+  let match = total.overTime;
+  if (match !== undefined && match.quantity === rate.name) {
+    return {
+      TAG: "Ok",
+      _0: match.seconds
+    };
+  }
+  return {
+    TAG: "Error",
+    _0: total.name + ` is not ` + rate.name + ` held over time`
+  };
+}
+
+function accumulate(total, rate, value, from, over, to) {
+  if (over < 0) {
+    return {
+      TAG: "Error",
+      _0: `a duration cannot be negative, got ` + over.toString() + ` seconds`
+    };
+  } else {
+    return Stdlib_Result.flatMap(secondsOver(total, rate), seconds => Stdlib_Result.flatMap(convert(rate, value, from, rate.units[0].code), first => convert(total, first * over / seconds, total.units[0].code, to)));
+  }
+}
+
+function average(total, rate, value, from, over, to) {
+  if (over <= 0) {
+    return {
+      TAG: "Error",
+      _0: `an average needs a duration longer than zero, got ` + over.toString() + ` seconds`
+    };
+  } else {
+    return Stdlib_Result.flatMap(secondsOver(total, rate), seconds => Stdlib_Result.flatMap(convert(total, value, from, total.units[0].code), first => convert(rate, first * seconds / over, rate.units[0].code, to)));
   }
 }
 
@@ -295,15 +369,20 @@ function Make(D) {
 
 export {
   unitDefSchema,
+  overTimeSchema,
   defSchema,
   energy,
   power,
   standard,
   isStandardName,
+  sameUnits,
   declare,
   conflicts,
   unitOf,
   convert,
+  secondsOver,
+  accumulate,
+  average,
   defId,
   fromFloat,
   schemaIn,

@@ -135,3 +135,120 @@ describe("A quantity a plugin declares", () => {
     expect(Quantity.conflicts([Volume.def, other])->Array.length)->toBe(1)
   })
 })
+
+describe("Energy is power held over time", () => {
+  testSync("energy says it is power held over time, an hour to a watt-hour", () => {
+    expect(Quantity.energy.overTime)->toEqual(Some({Quantity.quantity: "power", seconds: 3600.0}))
+    expect(Energy.def)->toEqual(Quantity.energy)
+    expect(Quantity.power.overTime)->toEqual(None)
+  })
+
+  testSync("the relation survives the structure's JSON, and power carries none", () => {
+    let json = Quantity.energy->Util_Sury.toJson(Quantity.defSchema)
+    expect(json->Util_Sury.fromJson(Quantity.defSchema))->toEqual(Quantity.energy)
+    expect(
+      switch Quantity.power->Util_Sury.toJson(Quantity.defSchema) {
+      | JSON.Object(d) => d->Dict.keysToArray->Array.includes("overTime")
+      | _ => true
+      },
+    )->toBe(false)
+  })
+
+  testSync("a plugin's own quantity is never another held over time", () =>
+    expect(
+      Quantity.declare({
+        name: "volume",
+        adds: true,
+        units: [{code: "l", factor: 1.0, words: "litre", plural: "litres"}],
+        overTime: {quantity: "flow", seconds: 1.0},
+      })->isError,
+    )->toBe(true)
+  )
+
+  testSync("power over time is not energy", () =>
+    expect(Quantity.secondsOver(~total=Quantity.power, ~rate=Quantity.energy)->isError)->toBe(true)
+  )
+})
+
+describe("Energy.ofPower", () => {
+  testSync("22 kW for half an hour is 11 kWh", () =>
+    expect(Energy.ofPower(22.0, ~from="kW", ~over=1800, ~to="kWh"))->toEqual(Ok(11.0))
+  )
+
+  testSync("in W, Wh, MW and MWh", () => {
+    expect(Energy.ofPower(500.0, ~from="W", ~over=7200, ~to="Wh"))->toEqual(Ok(1000.0))
+    expect(Energy.ofPower(500.0, ~from="W", ~over=7200, ~to="kWh"))->toEqual(Ok(1.0))
+    expect(Energy.ofPower(2.0, ~from="MW", ~over=3600, ~to="MWh"))->toEqual(Ok(2.0))
+    expect(Energy.ofPower(2.0, ~from="MW", ~over=900, ~to="kWh"))->toEqual(Ok(500.0))
+  })
+
+  testSync("power fed back gives energy fed back; over no time, none", () => {
+    expect(Energy.ofPower(-4.0, ~from="kW", ~over=3600, ~to="kWh"))->toEqual(Ok(-4.0))
+    expect(Energy.ofPower(22.0, ~from="kW", ~over=0, ~to="kWh"))->toEqual(Ok(0.0))
+  })
+
+  testSync("a negative duration and a unit of another quantity are refused", () => {
+    expect(Energy.ofPower(22.0, ~from="kW", ~over=-1, ~to="kWh")->isError)->toBe(true)
+    expect(Energy.ofPower(22.0, ~from="kWh", ~over=60, ~to="kWh")->isError)->toBe(true)
+    expect(Energy.ofPower(22.0, ~from="kW", ~over=60, ~to="kW")->isError)->toBe(true)
+  })
+})
+
+describe("Power.average", () => {
+  testSync("11 kWh over half an hour is 22 kW", () =>
+    expect(Power.average(11.0, ~from="kWh", ~over=1800, ~to="kW"))->toEqual(Ok(22.0))
+  )
+
+  testSync("in Wh, W, MWh and MW", () => {
+    expect(Power.average(1000.0, ~from="Wh", ~over=7200, ~to="W"))->toEqual(Ok(500.0))
+    expect(Power.average(1.0, ~from="kWh", ~over=7200, ~to="W"))->toEqual(Ok(500.0))
+    expect(Power.average(2.0, ~from="MWh", ~over=3600, ~to="MW"))->toEqual(Ok(2.0))
+    expect(Power.average(500.0, ~from="kWh", ~over=900, ~to="MW"))->toEqual(Ok(2.0))
+  })
+
+  testSync("undoes Energy.ofPower", () =>
+    expect(
+      Energy.ofPower(7.4, ~from="kW", ~over=5400, ~to="kWh")->Result.flatMap(
+        e => Power.average(e, ~from="kWh", ~over=5400, ~to="kW"),
+      ),
+    )->toEqual(Ok(7.4))
+  )
+
+  testSync("a duration of zero or less has no average and is refused", () => {
+    switch Power.average(11.0, ~from="kWh", ~over=0, ~to="kW") {
+    | Error(reason) => expect(reason->String.includes("longer than zero"))->toBe(true)
+    | Ok(_) => expect("accepted")->toBe("refused")
+    }
+    expect(Power.average(11.0, ~from="kWh", ~over=-1800, ~to="kW")->isError)->toBe(true)
+  })
+
+  testSync("a unit of another quantity is refused", () => {
+    expect(Power.average(11.0, ~from="kW", ~over=1800, ~to="kW")->isError)->toBe(true)
+    expect(Power.average(11.0, ~from="kWh", ~over=1800, ~to="kWh")->isError)->toBe(true)
+  })
+})
+
+describe("Energy.between", () => {
+  testSync("1228.3 kWh then 1240.7 kWh is 12.4 kWh, with no float noise", () =>
+    expect(Energy.between(1228.3, 1240.7))->toEqual(Ok(12.4))
+  )
+
+  testSync("a register that did not move gives none", () =>
+    expect(Energy.between(1240.7, 1240.7))->toEqual(Ok(0.0))
+  )
+
+  testSync("whole watt-hours stay whole", () =>
+    expect(Energy.between(1228300.0, 1240700.0))->toEqual(Ok(12400.0))
+  )
+
+  testSync("a later reading lower than the earlier is refused, never negative energy", () =>
+    switch Energy.between(1240.7, 1228.3) {
+    | Error(reason) => expect(reason->String.includes("went back"))->toBe(true)
+    | Ok(_) => expect("accepted")->toBe("refused")
+    }
+  )
+
+  testSync("a reading that is not a finite number is refused", () =>
+    expect(Energy.between(1228.3, Float.Constants.positiveInfinity)->isError)->toBe(true)
+  )
+})

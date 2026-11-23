@@ -12,7 +12,10 @@ catalogue keeps a unit whole in an identifier's English (`deliveredKWh` reads *D
   `Platform_PluginStructures`, with the types `Platform_QuantityDef` and
   `Platform_QuantityUnitDef`;
 - `Energy`, `Power` and `PricePer` are value types; `Quantity` itself is listed with the modules
-  that are not a field's value.<br/>
+  that are not a field's value.
+
+[QC7](#qc7-energy-is-power-held-over-time), energy as power held over time, built 2026-11-23,
+not yet released.<br/>
 **Part of:** a wider plan that orders this work with the readers of a plugin's schema; this plan
 holds core's part, and nothing in it waits on another repo.<br/>
 **Facts from:** this repo at `f3da9ed2f`, surveyed 2026-11-19.
@@ -34,7 +37,7 @@ A **price per unit** is money per a quantity's unit: the value is `Money`, with 
 and the field's schema adds *per kWh*. Charging a quantity at a price gives money, with one
 rounding to the currency's minor unit, whatever units the two are in.
 
-The steps are **QC1 to QC6**. **QC** stands for *quantities, core*. **QCD** are the decisions,
+The steps are **QC1 to QC7**. **QC** stands for *quantities, core*. **QCD** are the decisions,
 **QCQ** the open questions.
 
 | Step | What | Size |
@@ -45,6 +48,7 @@ The steps are **QC1 to QC6**. **QC** stands for *quantities, core*. **QCD** are 
 | QC4 | `PricePer`: money per a quantity's unit, the semantic `pricePerUnit`, and `charge` | S–M |
 | QC5 | The catalogue: a unit's spelling from the field's schema; keys for a declared quantity's name and units' words | S |
 | QC6 | `valueTypes` entries so a tool can write a scenario's value; the semantic types page of the docs | S |
+| QC7 | Energy is power held over time: the relation on energy's definition, `Energy.ofPower`, `Power.average`, `Energy.between` | S |
 
 ## Steps
 
@@ -131,6 +135,47 @@ declared quantity's keys are written once per plugin.
 - The docs' semantic types page (`packages/doc`) gains *Quantities and their units* and *A price
   per unit*, with the Amperia-like example of energy and a price per kWh.
 
+### QC7. Energy is power held over time
+
+A meter reports readings of a register that counts energy up, and a charger's power; an app
+that meters needs the energy between two readings and the average power over a window. Both
+are one relation: energy is power times a duration.
+
+- **The relation as data.** A quantity's definition gains an optional `overTime`:
+  `{quantity: "power", seconds: 3600.0}` on energy, saying its first unit (Wh) is the first unit
+  of power (W) held for 3600 seconds. A reader of `pluginStructure.quantities` learns from it
+  that energy is built from power and a duration. Only core's energy carries one; a plugin's
+  own quantity that says it is refused ([QC3](#qc3-a-quantity-a-plugin-declares)). On the wire
+  it is `Platform_QuantityDef.overTime`, absent from every other quantity's entry.
+- **`Energy.ofPower(power, ~from, ~over, ~to)`**: a constant power held over a duration, as
+  energy: 22 kW over 1800 seconds is 11 kWh. `from` is a unit of power, `to` one of energy;
+  the duration is `Duration.t`, whole seconds. Converts through each quantity's first unit.
+- **`Power.average(energy, ~from, ~over, ~to)`**: energy over a duration, as its average
+  power. A duration of zero or less has no average and is refused.
+- **`Energy.between(earlier, later)`**: the energy between two readings of a register that
+  only counts up, in the readings' unit. A later reading lower than the earlier is refused: a
+  register that went back is a fault, never negative energy.
+
+Each returns a `result`, refusing a unit of the wrong quantity as `Quantity.convert` does.
+
+**Tests:** `QuantityTest`: energy's relation and its JSON round trip, power carrying none, a
+plugin's quantity with one refused; each function in kW and kWh and in W, Wh, MW and MWh; the
+two undoing each other; a negative duration, a zero one for the average, and a register that
+went back refused. `AdminApiSchemaDriftTest` pins the new wire type.
+
+**As built**, 2026-11-23:
+- `Quantity.def` has `overTime?: overTime`; `Quantity.secondsOver`, `Quantity.accumulate` and
+  `Quantity.average` hold the arithmetic for any total and rate, and `Energy` and `Power` call
+  them with their own definitions, so neither module depends on the other;
+- `Quantity.declare` gives back core's own definition, with its relation, for a standard
+  quantity declared by name and units alone, which is how `Quantity.Make` builds `Energy`;
+- `Energy.between` keeps the difference to the readings' decimals (1228.3 then 1240.7 is 12.4,
+  not 12.400000000000091), since a float's subtraction adds digits no meter showed;
+- `Energy.ofPower` refuses a negative duration too; over none it gives zero energy;
+- the SDL gains `Platform_QuantityOverTimeDef {quantity, seconds}`, nullable on
+  `Platform_QuantityDef`; the encoder writes the key only where there is a relation, so a
+  plugin with no energy reads as before.
+
 ## Decisions
 
 | # | Decision | Why |
@@ -163,7 +208,8 @@ writes the same rule for the same quantity.
 
 ## Verification
 
-- `QuantityTest`, `PricePerTest`, `CatalogueTest` and `SemanticValueTypesTest` pass.
+- `QuantityTest`, `PricePerTest`, `CatalogueTest`, `SemanticValueTypesTest` and
+  `AdminApiSchemaDriftTest` pass.
 - A view with a field typed energy in kWh emits the marker and its detail in its JSON schema; the
   plugin's structure lists the quantity once.
 - The spec suite and `pnpm run build` stay green; a plugin with no quantity emits the same schema
@@ -172,6 +218,7 @@ writes the same rule for the same quantity.
 ## Out of scope
 
 - A value that carries its own unit, until a reader of varying units needs one.
-- Quantities built from two others (*km/h*); each is its own quantity for now.
+- Quantities built from two others (*km/h*), except energy as power held over time
+  ([QC7](#qc7-energy-is-power-held-over-time)); each other one is its own quantity for now.
 - Exchange rates: a price per unit converts its unit, never its currency.
 - How a reader draws a quantity or asks for one: that is the reader's.

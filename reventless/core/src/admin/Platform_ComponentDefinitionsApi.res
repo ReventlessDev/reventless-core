@@ -50,7 +50,10 @@ let sdlTypes: array<string> = [
   // page converts between units. A field names only the quantity and the unit.
   // Nullable on the entry, as a structure written before it cannot say.
   `type Platform_QuantityUnitDef {\n  code: String!\n  factor: Float!\n  words: String!\n  plural: String!\n}`,
-  `type Platform_QuantityDef {\n  name: String!\n  adds: Boolean!\n  units: [Platform_QuantityUnitDef!]!\n}`,
+  // What a quantity is held over time, where it is one: energy is power held for
+  // a duration. Null on every other quantity.
+  `type Platform_QuantityOverTimeDef {\n  quantity: String!\n  seconds: Float!\n}`,
+  `type Platform_QuantityDef {\n  name: String!\n  adds: Boolean!\n  units: [Platform_QuantityUnitDef!]!\n  overTime: Platform_QuantityOverTimeDef\n}`,
 ]
 
 let sdlQueryField: string = `  Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!`
@@ -59,7 +62,7 @@ let encodeStrings = (ss: array<string>): JSON.t =>
   ss->Array.map(JSON.Encode.string)->JSON.Encode.array
 
 let encodeQuantityDef = (q: Reventless.Quantity.def): JSON.t =>
-  Dict.fromArray([
+  [
     ("name", JSON.Encode.string(q.name)),
     ("adds", JSON.Encode.bool(q.adds)),
     (
@@ -75,7 +78,25 @@ let encodeQuantityDef = (q: Reventless.Quantity.def): JSON.t =>
       )
       ->JSON.Encode.array,
     ),
-  ])->JSON.Encode.object
+  ]
+  // Only where there is one, so a quantity that is not another held over time
+  // reads as it did before.
+  ->Array.concat(
+    switch q.overTime {
+    | Some({quantity, seconds}) => [
+        (
+          "overTime",
+          Dict.fromArray([
+            ("quantity", JSON.Encode.string(quantity)),
+            ("seconds", JSON.Encode.float(seconds)),
+          ])->JSON.Encode.object,
+        ),
+      ]
+    | None => []
+    },
+  )
+  ->Dict.fromArray
+  ->JSON.Encode.object
 
 let encodeQuantities = (qs: option<array<Reventless.Quantity.def>>): JSON.t =>
   qs->Option.mapOr(JSON.Encode.null, qs => qs->Array.map(encodeQuantityDef)->JSON.Encode.array)

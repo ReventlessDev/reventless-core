@@ -18,7 +18,8 @@ let sdlTypes = [
   `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n  handledEvents: [Platform_HandledEventDef!]\n  issuedCommands: [Platform_IssuedCommandDef!]\n}`,
   `type Platform_ComponentDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  internalQueryables: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n  quantities: [Platform_QuantityDef!]\n}`,
   `type Platform_QuantityUnitDef {\n  code: String!\n  factor: Float!\n  words: String!\n  plural: String!\n}`,
-  `type Platform_QuantityDef {\n  name: String!\n  adds: Boolean!\n  units: [Platform_QuantityUnitDef!]!\n}`
+  `type Platform_QuantityOverTimeDef {\n  quantity: String!\n  seconds: Float!\n}`,
+  `type Platform_QuantityDef {\n  name: String!\n  adds: Boolean!\n  units: [Platform_QuantityUnitDef!]!\n  overTime: Platform_QuantityOverTimeDef\n}`
 ];
 
 function encodeStrings(ss) {
@@ -26,6 +27,7 @@ function encodeStrings(ss) {
 }
 
 function encodeQuantityDef(q) {
+  let match = q.overTime;
   return Object.fromEntries([
     [
       "name",
@@ -56,7 +58,19 @@ function encodeQuantityDef(q) {
         ]
       ]))
     ]
-  ]);
+  ].concat(match !== undefined ? [[
+        "overTime",
+        Object.fromEntries([
+          [
+            "quantity",
+            match.quantity
+          ],
+          [
+            "seconds",
+            match.seconds
+          ]
+        ])
+      ]] : []));
 }
 
 function encodeQuantities(qs) {
