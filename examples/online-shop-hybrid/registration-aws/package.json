@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-registration-aws",
   "private": true,
-  "version": "1.0.0-alpha.49",
+  "version": "1.0.0-alpha.50",
   "description": "Online Shop Hybrid — Registration plugin AWS deployment: the sign-up door for visitors and its guards",
   "license": "Apache-2.0",
   "scripts": {

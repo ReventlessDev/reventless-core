@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.445 (2026-11-23)
+
+### Bug Fixes
+
+* **live:** a live update carries a trail's dates as a read returns them ([83e857f](https://github.com/ReventlessDev/reventless-core/commit/83e857fb5fae64c869f7b4e973e47439b6b739a3))
+
+
 # 3.0.0-alpha.444 (2026-11-22)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
