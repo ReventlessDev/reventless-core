@@ -9,6 +9,8 @@
 // Plain ESM rather than ReScript because two of the three modules live outside
 // this package and one is hand-written JS; the assertions stay in the .res test.
 
+import { marshall } from "@aws-sdk/util-dynamodb";
+
 const LOCAL = "../../local/src/adapter/LocalStateChangeDescriptor.res.mjs";
 const RELAY = "../src/adapter/StateTopic/StateTopic_AppSync_Ops.res.mjs";
 const POSTGRES = "../src/adapter/Runtime/StateTopicPublish.mjs";
@@ -102,6 +104,34 @@ const CASES = [
     retiredField: "shelfStatus",
     retiredValues: ["Archived", "Discontinued"],
   },
+  // A row with a lifecycle trail as the projection stores it: the derived
+  // attributes and the change stamp beside the trail. A reopened state (two
+  // visits), one visited once, and one never entered, which reads as null.
+  {
+    name: "row with a trail carries its dates as a read does",
+    changeKind: "Updated",
+    entityKey: "o1",
+    state: {
+      id: "o1",
+      lifecycle: "Placed",
+      trail: [
+        { state: "Placed", at: "2026-03-02T09:00:00Z" },
+        { state: "Cancelled", at: "2026-03-02T10:00:00Z" },
+        { state: "Placed", at: "2026-03-02T11:00:00Z" },
+      ],
+      _entered_Placed: "2026-03-02T11:00:00Z",
+      _entered_Placed_first: "2026-03-02T09:00:00Z",
+      _visits_Placed: 2,
+      _entered_Cancelled: "2026-03-02T10:00:00Z",
+      _entered_Cancelled_first: "2026-03-02T10:00:00Z",
+      _visits_Cancelled: 1,
+      _entered_current: "2026-03-02T11:00:00Z",
+      _trail: "1",
+      _change: { msgId: "m1", at: "2026-03-02T11:00:00Z", flow: "f1" },
+      updatedAt: "2026-03-02T11:00:00Z",
+    },
+    reading: { field: "trail", states: ["Placed", "Shipped", "Cancelled"] },
+  },
   {
     name: "delete carries no row",
     changeKind: "Removed",
@@ -132,7 +162,7 @@ export async function buildAll() {
     return { ...descriptor, seq: "<seq>" };
   };
 
-  return CASES.map(({ name, changeKind, entityKey, state, retiredField, retiredValues }) => ({
+  return CASES.map(({ name, changeKind, entityKey, state, retiredField, retiredValues, reading }) => ({
     name,
     local: normalise(
       local.make(
@@ -142,19 +172,20 @@ export async function buildAll() {
         local.nextSequence(),
         retiredField,
         retiredValues,
+        reading,
       ),
     ),
     relay: normalise(
       relay.makeDescriptor(
         changeKind,
         entityKey,
-        // The relay unmarshalls the stream image before building the descriptor,
-        // so it takes the same plain row the other two do. A REMOVE is handed the
-        // OldImage, which makeDescriptor then drops.
-        state === undefined ? { id: entityKey } : state,
+        // The row as the stream delivers it: typed attributes, unmarshalled as the
+        // relay does. A REMOVE is handed the OldImage, which makeDescriptor drops.
+        relay.unmarshallImage(marshall(state === undefined ? { id: entityKey } : state)),
         "49590300000000016818000000",
         retiredField,
         retiredValues,
+        reading,
       ),
     ),
     postgres: normalise(
@@ -165,6 +196,7 @@ export async function buildAll() {
         seq: postgres.nextSequence(),
         retiredField,
         retiredValues,
+        reading,
       }),
     ),
   }));

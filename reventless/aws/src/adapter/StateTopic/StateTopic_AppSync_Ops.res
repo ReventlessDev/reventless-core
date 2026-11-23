@@ -13,9 +13,10 @@
 //
 // The descriptor is one of three implementations of a shared wire format (the
 // others: `LocalStateChangeDescriptor` in reventless-local, `StateTopicPublish.mjs`
-// for Postgres read models). They share no code — this module stays Pulumi-free so
-// a core import can't drag deploy-time code into the Lambda's import graph — so
-// `StateChangeDescriptorParityTest` drives all three and asserts they agree.
+// for Postgres read models). They share only spec's `Lifecycle.Trail.toRead` — this
+// module stays Pulumi-free so a core import can't drag deploy-time code into the
+// Lambda's import graph — so `StateChangeDescriptorParityTest` drives all three and
+// asserts they agree.
 
 let endpoint = NodeProcess.env->Dict.get("APPSYNC_ENDPOINT")->Option.getOr("")
 
@@ -96,6 +97,21 @@ let retiredMap: dict<Reventless.OwnerScope.retiredScope> = switch NodeProcess.en
 | None => Dict.make()
 }
 
+// STATE_TRAIL_MAP: `{ <tableName>: {field, states} }`, injected at deploy time for
+// the tables whose reads carry a trail's dates, so the payload can carry them too.
+let parseTrailMap = (raw: string): dict<Reventless.Lifecycle.Trail.reading> =>
+  switch raw->JSON.parseOrThrow->JSON.Decode.object {
+  | Some(d) =>
+    let out = Dict.make()
+    d->Dict.forEachWithKey((v, k) =>
+      v->Reventless.Lifecycle.Trail.readingFromJson->Option.forEach(r => out->Dict.set(k, r))
+    )
+    out
+  | None => Dict.make()
+  }
+
+let trailMap = NodeProcess.env->Dict.get("STATE_TRAIL_MAP")->Option.getOr("{}")->parseTrailMap
+
 let tableNameFromEventSourceArn = (arn: string): option<string> => {
   let parts = arn->String.split("/")
   switch (parts->Array.get(0), parts->Array.get(1), parts->Array.get(2)) {
@@ -159,6 +175,11 @@ let changeKindFor = (eventName: string): string =>
   | _ => "Updated" // defensive default — shouldn't fire
   }
 
+/** A stream image as plain JSON: a number attribute (a trail's visits) becomes a
+    JSON number, not a string. */
+let unmarshallImage = (image: dict<attributeValue>): dict<JSON.t> =>
+  AwsSdk.DynamoDb_Util_Helpers.unmarshallDict(image)
+
 // Prefer updatedAt, then createdAt; None if neither is a string.
 let pickSortKeyValue = (image: dict<JSON.t>): option<string> =>
   switch image->Dict.get("updatedAt")->Option.flatMap(JSON.Decode.string) {
@@ -175,7 +196,8 @@ let maxStateChars =
 /** Build the change descriptor. Split out of `processRecord` so the wire format
     can be asserted against the other two implementations without a network call.
 
-    `image` is the unmarshalled NewImage for a save, the OldImage for a REMOVE.
+    `image` is the NewImage for a save, the OldImage for a REMOVE, through
+    `unmarshallImage`.
     A REMOVE carries neither `state` (there is no new row) nor `sortKeyValue`
     (a sort position for a deleted row has no consumer, and the other two
     implementations cannot produce one). */
@@ -186,6 +208,7 @@ let makeDescriptor = (
   ~seq: option<string>,
   ~retiredField: option<string>=?,
   ~retiredValues: option<array<string>>=?,
+  ~reading: option<Reventless.Lifecycle.Trail.reading>=?,
 ): JSON.t => {
   let removed = changeKind == "Removed"
   // A retired row publishes as metadata only, for the reason the other two
@@ -212,7 +235,8 @@ let makeDescriptor = (
   }
   seq->Option.forEach(s => descriptor->Dict.set("seq", JSON.Encode.string(s)))
   if !removed && !retired {
-    let state = image->JSON.Encode.object
+    // As a read returns the row: a trail's derived attributes become its dates object.
+    let state = image->Reventless.Lifecycle.Trail.toRead(~reading?)->JSON.Encode.object
     let encoded = state->JSON.stringify
     if encoded->String.length <= maxStateChars {
       descriptor->Dict.set("state", state)
@@ -254,7 +278,7 @@ let processRecord = async (
       | Some(image) =>
         let entityKey = entityKeyFromRecord(dynamodb)
         let channel = `/default/${topicRoot}/${AppSyncEventsSigner_Ops.pathSegment(entityKey)}`
-        let unmarshalled: dict<JSON.t> = AwsSdk.DynamoDb_Util_Helpers.unmarshallDict(image)
+        let unmarshalled = unmarshallImage(image)
         let descriptor = makeDescriptor(
           ~changeKind=changeKindFor(record.eventName),
           ~entityKey,
@@ -266,6 +290,9 @@ let processRecord = async (
           ~retiredValues=?tableNameFromEventSourceArn(record.eventSourceARN)
           ->Option.flatMap(t => retiredMap->Dict.get(t))
           ->Option.flatMap(scope => scope.Reventless.OwnerScope.values),
+          ~reading=?tableNameFromEventSourceArn(record.eventSourceARN)->Option.flatMap(t =>
+            trailMap->Dict.get(t)
+          ),
         )
         let body =
           Dict.fromArray([

@@ -1221,7 +1221,7 @@ module Make = (Bus: LocalBus.T) => {
       fieldResolvers->Dict.set(field, async (root, _args, _ctx) =>
         root
         ->JSON.Decode.object
-        ->Option.mapOr(JSON.Encode.null, Reventless.Lifecycle.Trail.readEntered)
+        ->Option.mapOr(JSON.Encode.null, row => Reventless.Lifecycle.Trail.readEntered(row))
       )
     )
     server.registerFieldResolvers(~typeName=returnTypeName, ~resolvers=fieldResolvers)

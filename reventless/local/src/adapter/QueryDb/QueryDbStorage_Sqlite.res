@@ -270,6 +270,7 @@ let makeStorage = (
       ~retiredValues=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r =>
         r.values
       ),
+      ~reading=?LocalStateChangeDescriptor.readingFor(name),
     )
     bus.publishStateChange(~name, ~descriptor)
   }

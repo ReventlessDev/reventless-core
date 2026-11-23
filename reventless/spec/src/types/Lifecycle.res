@@ -289,9 +289,11 @@ module Trail = {
     }
 
   /** The `<trail>Entered` object a row's derived attributes read as: per state
-      visited, `{latest, first, visits}`, and `current`. */
-  let readEntered = (row: dict<JSON.t>): JSON.t => {
+      visited, `{latest, first, visits}`, and `current`. Each of `states` the row
+      never entered reads as null. */
+  let readEntered = (row: dict<JSON.t>, ~states: array<string>=[]): JSON.t => {
     let out = Dict.make()
+    states->Array.forEach(state => out->Dict.set(stateKey(state), JSON.Encode.null))
     row
     ->Dict.toArray
     ->Array.forEach(((key, latest)) =>
@@ -311,5 +313,55 @@ module Trail = {
     )
     out->Dict.set(currentKey, row->Dict.get(enteredCurrentAttr)->Option.getOr(JSON.Encode.null))
     out->JSON.Encode.object
+  }
+
+  /** What a reader needs to give a row its `<trail>Entered` object: the trail
+      field, and the lifecycle's states, so one never entered reads as null. */
+  type reading = {field: string, states: array<string>}
+
+  /** The trail whose dates a view's reads carry: one with a lifecycle, not `@internal`. */
+  let reading = (stateSchema: S.t<unknown>): option<reading> =>
+    readableField(stateSchema)
+    ->Option.filter(field =>
+      !(
+        StateAnnotations.getSpec(stateSchema)
+        ->Option.flatMap(spec => spec.internal)
+        ->Option.getOr([])
+        ->Array.includes(field)
+      )
+    )
+    ->Option.map(field => {field, states: stateNames(stateSchema)})
+
+  /** A reading as JSON, for a process with no state schema to derive it from. */
+  let readingToJson = ({field, states}: reading): JSON.t =>
+    Dict.fromArray([
+      ("field", JSON.Encode.string(field)),
+      ("states", states->Array.map(JSON.Encode.string)->JSON.Encode.array),
+    ])->JSON.Encode.object
+
+  let readingFromJson = (json: JSON.t): option<reading> =>
+    json
+    ->JSON.Decode.object
+    ->Option.flatMap(o =>
+      o
+      ->Dict.get("field")
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.map(field => {
+        field,
+        states: o
+        ->Dict.get("states")
+        ->Option.flatMap(JSON.Decode.array)
+        ->Option.mapOr([], vs => vs->Array.filterMap(JSON.Decode.string)),
+      })
+    )
+
+  /** A stored row as a read returns it: the derived attributes left out and,
+      given a `reading`, the `<trail>Entered` object they read as in their place. */
+  let toRead = (row: dict<JSON.t>, ~reading: option<reading>=?): dict<JSON.t> => {
+    let out = row->Dict.toArray->Array.filter(((key, _)) => !isDerivedAttr(key))->Dict.fromArray
+    reading->Option.forEach(({field, states}) =>
+      out->Dict.set(enteredField(field), readEntered(row, ~states))
+    )
+    out
   }
 }

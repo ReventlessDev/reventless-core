@@ -6,10 +6,11 @@
 //
 // One wire format, three independent implementations: this one (both local
 // backends), the DynamoDB stream relay in `StateTopic_AppSync_Ops`, and the
-// Postgres projection-side publisher in `StateTopicPublish.mjs`. They share no
-// code — the relay's module is deliberately Pulumi-free so a core import can't
-// drag deploy-time code into its Lambda graph. `StateChangeDescriptorParityTest`
-// (reventless-aws) drives all three and asserts they agree.
+// Postgres projection-side publisher in `StateTopicPublish.mjs`. They share only
+// spec's `Lifecycle.Trail.toRead` — the relay's module is deliberately Pulumi-free
+// so a core import can't drag deploy-time code into its Lambda graph.
+// `StateChangeDescriptorParityTest` (reventless-aws) drives all three and asserts
+// they agree.
 //
 // `state` is ADVISORY. A subscriber may always ignore it and refetch; that is
 // what keeps the channel best-effort. A protocol that required the payload to be
@@ -40,6 +41,21 @@ let retiredSpecFor = (name: string): option<Reventless.StateAnnotations.retiredS
   ->Dict.get(name)
   ->Option.flatMap(Reventless.StateAnnotations.getSpec)
   ->Option.flatMap(spec => spec.retired)
+
+/** The trail whose dates a registered read model's reads carry, or `None`;
+    looked up by name for the reason `retiredSpecFor` is. */
+let readingFor = (name: string): option<Reventless.Lifecycle.Trail.reading> =>
+  ReventlessCore.Plugin_Helpers.stateSchemaRegistry
+  ->Dict.get(name)
+  ->Option.flatMap(Reventless.Lifecycle.Trail.reading)
+
+/** The row as a GraphQL read returns it: a trail's derived attributes become its
+    `<trail>Entered` object. A value that is not an object is left as it is. */
+let readShape = (state: JSON.t, ~reading: option<Reventless.Lifecycle.Trail.reading>): JSON.t =>
+  switch state {
+  | Object(row) => row->Reventless.Lifecycle.Trail.toRead(~reading?)->JSON.Encode.object
+  | _ => state
+  }
 
 let pickSortKeyValue = (state: JSON.t): option<string> =>
   switch state->JSON.Decode.object {
@@ -81,7 +97,9 @@ let nextSequence = (): string => {
       Composite projections: `partition ++ "-" ++ subKey`.
     - `state`: the resulting row for save(); `None` for delete(), which has no new
       row — the descriptor then omits both `state` and `sortKeyValue`.
-    - `seq`: monotonic ordering token, from `nextSequence`. */
+    - `seq`: monotonic ordering token, from `nextSequence`.
+    - `reading`: the view's trail, whose derived attributes the payload carries
+      as a read does (`readShape`). */
 let make = (
   ~changeKind: string,
   ~id: string,
@@ -89,6 +107,7 @@ let make = (
   ~seq: string,
   ~retiredField: option<string>=?,
   ~retiredValues: option<array<string>>=?,
+  ~reading: option<Reventless.Lifecycle.Trail.reading>=?,
 ): JSON.t => {
   let descriptor = Dict.make()
   descriptor->Dict.set("changeKind", JSON.Encode.string(changeKind))
@@ -124,6 +143,7 @@ let make = (
   // and false again the moment the row is restored.
   | Some(_) if isRetired => ()
   | Some(s) =>
+    let s = s->readShape(~reading)
     let encoded = s->JSON.stringify
     if encoded->String.length <= maxStateChars {
       descriptor->Dict.set("state", s)

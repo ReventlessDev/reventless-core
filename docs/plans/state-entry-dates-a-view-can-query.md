@@ -1,7 +1,7 @@
 # Plan: state-entry dates a view can query
 
 > **Status:** Plan · in progress ([QDS1](#4-steps) to [QDS5](#4-steps) and [QDS7](#4-steps) to
-> [QDS9](#4-steps) done; of [QDS6](#4-steps) one check is open, the request through the shop's
+> [QDS10](#4-steps) done; of [QDS6](#4-steps) one check is open, the request through the shop's
 > GraphQL on the `alpha` stack). Written 2026-11-21 from the analysis
 > [state-entry dates as queryable fields](../analysis/state-entry-dates-as-queryable-fields.md),
 > *the analysis*, whose recommendations are taken as this plan's decisions ([§3](#3-decisions)).
@@ -256,6 +256,34 @@ apply when reading the key back. The key is written wherever the `<trailField>En
 trail with a lifecycle field, not `@internal`). The SDL does not change. The example packages do not
 depend on the package that holds the emitter, so the test's view carries the shop's Orders
 annotation and the real Orders schema was read once by hand.
+
+**QDS10 A live update carries the dates as a read does.** On a local shop (memory backend), a
+client's live merge warned that a payload carried `_entered_Placed`, `_entered_Placed_first`,
+`_visits_Placed`, the same for `Shipped` and `Cancelled`, `_entered_current`, `_trail` and
+`_change`, none declared by the view's schema. Each of the change descriptor's three publishers
+(both local backends, the DynamoDB stream relay and the Postgres publisher) sent `state` as the
+stored row, so a row updated live kept the `<trailField>Entered` object of [QDS2](#4-steps) it was
+fetched with, and an age drawn from it stayed stale until the list refetched. The descriptor's
+`state` carries the dates as the read does: the `<trailField>Entered` object built from the
+attributes of [QDD7](#3-decisions), and the attributes left out. One function builds it for all
+three, and the relay, which runs with no plugin registry, gets each table's trail at deploy time.
+*Done when* the parity test runs a row with a trail (a reopened state, one visited once, one never
+entered) through all three publishers, with the stream image as typed attributes, and they agree on
+the read's object; and a local test compares the published row with a GraphQL read of it.
+*Done* 2026-11-23. `Lifecycle.Trail.toRead(row, ~reading?)` in spec leaves the derived attributes
+out and, given a `reading` (`{field, states}`, from `Lifecycle.Trail.reading(stateSchema)`, which
+`SchemaType.trailEntered` now also uses), sets `<field>Entered` from `readEntered`, which takes the
+states and gives each one never entered `null`. The local descriptor looks the reading up by view
+name, as it does the `@retired` rule. The relay reads `STATE_TRAIL_MAP` (`{<table>: {field,
+states}}`), which `StateTopic_AppSync.finish` writes beside `STATE_RETIRED_MAP`; both sides use
+`Lifecycle.Trail.readingToJson`/`readingFromJson`. The Postgres publisher imports the compiled
+`Lifecycle.Trail` and gets the reading in its live config from the projection runtime, which has the
+state schema. The relay unmarshalls the stream image with numbers as numbers, so `visits` arrives as
+a number; the parity test marshalls every case's row before the relay reads it. `_change` stays in
+the payload: it is a field of every view type (`_change: RowChange`), read over GraphQL by an
+elevated caller only, so it is meant to reach a client; a payload carries it to every subscriber of
+the view, which is a question for the access rules rather than for this step. The relay and the
+Postgres publisher are proved by unit tests, not yet on a deployed stack.
 
 ## 5. Out of scope
 

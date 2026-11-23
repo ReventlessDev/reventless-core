@@ -315,8 +315,12 @@ function readableField(stateSchema) {
   }
 }
 
-function readEntered(row) {
+function readEntered(row, statesOpt) {
+  let states = statesOpt !== undefined ? statesOpt : [];
   let out = {};
+  states.forEach(state => {
+    out[stateKey(state)] = null;
+  });
   Object.entries(row).forEach(param => {
     let key = param[0];
     if (!(key.startsWith(enteredPrefix) && key !== enteredCurrentAttr && !key.endsWith("_first"))) {
@@ -341,6 +345,41 @@ function readEntered(row) {
     out[stateKey(state)] = visits;
   });
   out[currentKey] = Stdlib_Option.getOr(row[enteredCurrentAttr], null);
+  return out;
+}
+
+function reading(stateSchema) {
+  return Stdlib_Option.map(Stdlib_Option.filter(readableField(stateSchema), field => !Stdlib_Option.getOr(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(stateSchema), spec => spec.internal), []).includes(field)), field => ({
+    field: field,
+    states: stateNames(stateSchema)
+  }));
+}
+
+function readingToJson(param) {
+  return Object.fromEntries([
+    [
+      "field",
+      param.field
+    ],
+    [
+      "states",
+      param.states.map(prim => prim)
+    ]
+  ]);
+}
+
+function readingFromJson(json) {
+  return Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), o => Stdlib_Option.map(Stdlib_Option.flatMap(o["field"], Stdlib_JSON.Decode.string), field => ({
+    field: field,
+    states: Stdlib_Option.mapOr(Stdlib_Option.flatMap(o["states"], Stdlib_JSON.Decode.array), [], vs => Stdlib_Array.filterMap(vs, Stdlib_JSON.Decode.string))
+  })));
+}
+
+function toRead(row, reading) {
+  let out = Object.fromEntries(Object.entries(row).filter(param => !isDerivedAttr(param[0])));
+  Stdlib_Option.forEach(reading, param => {
+    out[param.field + "Entered"] = readEntered(row, param.states);
+  });
   return out;
 }
 
@@ -372,7 +411,11 @@ let Trail = {
   stateKey: stateKey,
   currentKey: currentKey,
   readableField: readableField,
-  readEntered: readEntered
+  readEntered: readEntered,
+  reading: reading,
+  readingToJson: readingToJson,
+  readingFromJson: readingFromJson,
+  toRead: toRead
 };
 
 export {

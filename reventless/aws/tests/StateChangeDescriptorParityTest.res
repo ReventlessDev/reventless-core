@@ -4,10 +4,10 @@
 //   - StateTopic_AppSync_Ops          (DynamoDB stream relay)
 //   - StateTopicPublish.mjs           (Postgres projection-side publisher)
 //
-// They share no code on purpose — the relay module stays Pulumi-free so a core
-// import can't pull deploy-time code into its Lambda graph — which makes drift
-// the standing risk: three sites, one wire format, and a browser that cannot tell
-// which one produced a frame. This test is the guard.
+// They share only spec's `Lifecycle.Trail.toRead` — the relay module stays
+// Pulumi-free so a core import can't pull deploy-time code into its Lambda graph —
+// which makes drift the standing risk: three sites, one wire format, and a browser
+// that cannot tell which one produced a frame. This test is the guard.
 //
 // `seq` is normalised away by the harness because the three take it from different
 // monotonic sources by design (a DynamoDB stream SequenceNumber vs a wall-clock
@@ -29,7 +29,7 @@ describe("state-change descriptor parity", () => {
   testAsync("every implementation builds the same descriptor", async () => {
     let cases = await buildAll()
     // A silent zero-case run would pass while asserting nothing.
-    expect(cases->Array.length)->toBe(11)
+    expect(cases->Array.length)->toBe(12)
     cases->Array.forEach(
       c => {
         expect((c.name, c.relay))->toEqual((c.name, c.local))
@@ -137,5 +137,57 @@ describe("state-change descriptor parity", () => {
       ))->toEqual((true, true, true))
     | None => expect("live-state case missing")->toBe("present")
     }
+  })
+
+  // A trail's dates travel as a GraphQL read returns them, so a row updated live
+  // replaces the dates it was fetched with; the stored attributes stay behind.
+  testAsync("a row with a trail carries its dates as a read does, everywhere", async () => {
+    let cases = await buildAll()
+    let stateOf = (d: JSON.t) =>
+      d
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("state"))
+      ->Option.flatMap(JSON.Decode.object)
+    switch cases->Array.find(c => c.name == "row with a trail carries its dates as a read does") {
+    | Some(c) =>
+      [c.local, c.relay, c.postgres]->Array.forEach(
+        d =>
+          switch stateOf(d) {
+          | Some(state) =>
+            expect(
+              state
+              ->Dict.keysToArray
+              ->Array.filter(
+                k =>
+                  k->String.startsWith("_entered_") ||
+                  k->String.startsWith("_visits_") ||
+                  k == "_trail",
+              ),
+            )->toEqual([])
+            expect(state->Dict.get("trailEntered"))->toEqual(
+              Some(
+                JSON.parseOrThrow(`{"placed":{"latest":"2026-03-02T11:00:00Z","first":"2026-03-02T09:00:00Z","visits":2},"shipped":null,"cancelled":{"latest":"2026-03-02T10:00:00Z","first":"2026-03-02T10:00:00Z","visits":1},"current":"2026-03-02T11:00:00Z"}`),
+              ),
+            )
+          | None => expect("trail row's state missing")->toBe("present")
+          },
+      )
+    | None => expect("trail case missing")->toBe("present")
+    }
+  })
+
+  // The relay has no registry: it reads each table's trail from the map the deploy writes.
+  testSync("the relay reads the trail map the deploy writes", () => {
+    let reading: Reventless.Lifecycle.Trail.reading = {
+      field: "trail",
+      states: ["Placed", "Shipped"],
+    }
+    let written =
+      Dict.fromArray([("Orders-1", reading->Reventless.Lifecycle.Trail.readingToJson)])
+      ->JSON.Encode.object
+      ->JSON.stringify
+    expect(StateTopic_AppSync_Ops.parseTrailMap(written))->toEqual(
+      Dict.fromArray([("Orders-1", reading)]),
+    )
   })
 })

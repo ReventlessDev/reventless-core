@@ -746,7 +746,7 @@ function Make(Bus) {
     };
     fieldResolvers[RowChange$ReventlessCore.key] = changeResolver;
     Stdlib_Option.forEach(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], s => SchemaType$ReventlessCore.trailEntered(returnTypeName, s)), param => {
-      fieldResolvers[param.field] = async (root, _args, _ctx) => Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(root), null, Lifecycle$Reventless.Trail.readEntered);
+      fieldResolvers[param.field] = async (root, _args, _ctx) => Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(root), null, row => Lifecycle$Reventless.Trail.readEntered(row, undefined));
     });
     server.registerFieldResolvers(returnTypeName, fieldResolvers);
     let allSdl = [byIdSdl].concat(byIdsSdl).concat(refsSdl).concat(match[0]).concat(itemsSdl).concat(indexSdlFields);

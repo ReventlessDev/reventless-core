@@ -46,6 +46,7 @@ type liveConfig = {
   region?: string,
   topicName?: string,
   subIdField?: string,
+  reading?: Reventless.Lifecycle.Trail.reading,
 }
 
 @module("./StateTopicPublish.mjs")
@@ -147,6 +148,7 @@ let makeQueryDbOps = (
   ~stateTopicName: option<string>,
   ~indexes: array<Reventless.ReadModel.indexConfig>,
   ~subIdField: option<string>,
+  ~stateSchema: option<S.t<unknown>>,
 ): ReventlessCore.QueryDb_Adapter.operations =>
   switch pgConnection {
   | Some(connection) =>
@@ -160,6 +162,7 @@ let makeQueryDbOps = (
       region: ?(NodeProcess.env->Dict.get("AWS_REGION")),
       topicName: ?stateTopicName,
       ?subIdField,
+      reading: ?(stateSchema->Option.flatMap(Reventless.Lifecycle.Trail.reading)),
     })
   | None => QueryDbEntryPoint_Ops.makeDynamoQueryDbOps(~tableName=queryDbTableName)
   }->withRowChange

@@ -2,12 +2,25 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 
 function retiredSpecFor(name) {
   return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], StateAnnotations$Reventless.getSpec), spec => spec.retired);
+}
+
+function readingFor(name) {
+  return Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], Lifecycle$Reventless.Trail.reading);
+}
+
+function readShape(state, reading) {
+  if (typeof state === "object" && state !== null && !Array.isArray(state)) {
+    return Lifecycle$Reventless.Trail.toRead(state, reading);
+  } else {
+    return state;
+  }
 }
 
 function pickSortKeyValue(state) {
@@ -36,7 +49,7 @@ function nextSequence() {
   return next.toString();
 }
 
-function make(changeKind, id, state, seq, retiredField, retiredValues) {
+function make(changeKind, id, state, seq, retiredField, retiredValues, reading) {
   let descriptor = {};
   descriptor["changeKind"] = changeKind;
   descriptor["id"] = id;
@@ -50,9 +63,10 @@ function make(changeKind, id, state, seq, retiredField, retiredValues) {
   }
   descriptor["seq"] = seq;
   if (state !== undefined && !isRetired) {
-    let encoded = JSON.stringify(state);
+    let s = readShape(state, reading);
+    let encoded = JSON.stringify(s);
     if (encoded.length <= 61440) {
-      descriptor["state"] = state;
+      descriptor["state"] = s;
     } else {
       console.warn(`STATE_PAYLOAD_DOWNGRADED id=` + id + ` chars=` + encoded.length.toString());
     }
@@ -65,9 +79,11 @@ let maxStateChars = 61440;
 export {
   maxStateChars,
   retiredSpecFor,
+  readingFor,
+  readShape,
   pickSortKeyValue,
   lastSequence,
   nextSequence,
   make,
 }
-/* OwnerScope-Reventless Not a pure module */
+/* Lifecycle-Reventless Not a pure module */

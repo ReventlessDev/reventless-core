@@ -7,6 +7,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as DynamoDb_Util_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_Util_Helpers.res.mjs";
@@ -40,6 +41,20 @@ if (d !== undefined) {
 } else {
   retiredMap = {};
 }
+
+function parseTrailMap(raw) {
+  let d = Stdlib_JSON.Decode.object(JSON.parse(raw));
+  if (d === undefined) {
+    return {};
+  }
+  let out = {};
+  Stdlib_Dict.forEachWithKey(d, (v, k) => Stdlib_Option.forEach(Lifecycle$Reventless.Trail.readingFromJson(v), r => {
+    out[k] = r;
+  }));
+  return out;
+}
+
+let trailMap = parseTrailMap(Stdlib_Option.getOr(process.env["STATE_TRAIL_MAP"], "{}"));
 
 function tableNameFromEventSourceArn(arn) {
   let parts = arn.split("/");
@@ -109,6 +124,10 @@ function changeKindFor(eventName) {
   }
 }
 
+function unmarshallImage(image) {
+  return DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, image);
+}
+
 function pickSortKeyValue(image) {
   let v = Stdlib_Option.flatMap(image["updatedAt"], Stdlib_JSON.Decode.string);
   if (v !== undefined) {
@@ -118,7 +137,7 @@ function pickSortKeyValue(image) {
   }
 }
 
-function makeDescriptor(changeKind, entityKey, image, seq, retiredField, retiredValues) {
+function makeDescriptor(changeKind, entityKey, image, seq, retiredField, retiredValues, reading) {
   let removed = changeKind === "Removed";
   let retired = retiredField !== undefined ? !removed && OwnerScope$Reventless.isRetiredValue({
       field: retiredField,
@@ -136,9 +155,10 @@ function makeDescriptor(changeKind, entityKey, image, seq, retiredField, retired
     descriptor["seq"] = s;
   });
   if (!removed && !retired) {
-    let encoded = JSON.stringify(image);
+    let state = Lifecycle$Reventless.Trail.toRead(image, reading);
+    let encoded = JSON.stringify(state);
     if (encoded.length <= 61440) {
-      descriptor["state"] = image;
+      descriptor["state"] = state;
     } else {
       console.warn(`STATE_PAYLOAD_DOWNGRADED id=` + entityKey + ` chars=` + encoded.length.toString());
     }
@@ -160,7 +180,7 @@ async function processRecord(record, region, creds) {
     let entityKey = entityKeyFromRecord(dynamodb);
     let channel = `/default/` + topicRoot + `/` + AppSyncEventsSigner_Ops$ReventlessAws.pathSegment(entityKey);
     let unmarshalled = DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, image);
-    let descriptor = makeDescriptor(changeKindFor(record.eventName), entityKey, unmarshalled, dynamodb.SequenceNumber, Stdlib_Option.map(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.values));
+    let descriptor = makeDescriptor(changeKindFor(record.eventName), entityKey, unmarshalled, dynamodb.SequenceNumber, Stdlib_Option.map(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => retiredMap[t]), scope => scope.values), Stdlib_Option.flatMap(tableNameFromEventSourceArn(record.eventSourceARN), t => trailMap[t]));
     let body = JSON.stringify(Object.fromEntries([
       [
         "id",
@@ -227,11 +247,14 @@ export {
   endpoint,
   topicMap,
   retiredMap,
+  parseTrailMap,
+  trailMap,
   tableNameFromEventSourceArn,
   topicRootFromEventSourceArn,
   jsonToString,
   entityKeyFromRecord,
   changeKindFor,
+  unmarshallImage,
   pickSortKeyValue,
   maxStateChars,
   makeDescriptor,

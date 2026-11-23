@@ -440,17 +440,7 @@ let trailShape = (
 type trailEntered = {trailField: string, field: string, shape: schemaType}
 
 let trailEntered = (~typeName: string, schema: S.t<unknown>): option<trailEntered> =>
-  Reventless.Lifecycle.Trail.readableField(schema)
-  // An `@internal` trail keeps its dates internal too.
-  ->Option.filter(trailField =>
-    !(
-      Reventless.StateAnnotations.getSpec(schema)
-      ->Option.flatMap(spec => spec.internal)
-      ->Option.getOr([])
-      ->Array.includes(trailField)
-    )
-  )
-  ->Option.map(trailField => {
+  Reventless.Lifecycle.Trail.reading(schema)->Option.map(({field: trailField}) => {
     let base = typeName ++ trailField->String.capitalize
     let visits = ObjectRef(
       base ++ "Visits",

@@ -106,7 +106,13 @@ let setup = async () => {
     ~authorization=Reventless.Authorization.AllowAuthenticated,
     ~opts=({}: Pulumi.CustomResourceOptions.t),
   )
-  ops
+  (ops, Bus.subscribeToStateChanges)
+}
+
+let reopened: order = {
+  orderId: "o-1",
+  lifecycle: Placed,
+  trail: [{state: Placed, at: nine}, {state: Cancelled, at: ten}, {state: Placed, at: eleven}],
 }
 
 describe("a trail's dates over GraphQL", () => {
@@ -131,21 +137,8 @@ describe("a trail's dates over GraphQL", () => {
   })
 
   testPromise("a reopened row reads both visits to a state apart", async () => {
-    let ops = await setup()
-    let _ = await ops.save(
-      "o-1",
-      {
-        orderId: "o-1",
-        lifecycle: Placed,
-        trail: [
-          {state: Placed, at: nine},
-          {state: Cancelled, at: ten},
-          {state: Placed, at: eleven},
-        ],
-      },
-      Init,
-      None,
-    )
+    let (ops, _) = await setup()
+    let _ = await ops.save("o-1", reopened, Init, None)
     let result = await execute(
       `{ ${typeName}(id: "o-1") { trailEntered { placed { latest first visits } cancelled { latest first visits } shipped { visits } current } } }`,
     )
@@ -173,5 +166,39 @@ describe("a trail's dates over GraphQL", () => {
         ])->JSON.Encode.object,
       ),
     )
+  })
+
+  // A live update carries the row as this read returns it, so a client merging it
+  // replaces the dates it fetched; the stored attributes stay behind.
+  testPromise("a live update carries the same dates, without the stored attributes", async () => {
+    let (ops, subscribe) = await setup()
+    let published = []
+    subscribe(viewName, descriptor => published->Array.push(descriptor))
+    let _ = await ops.save("o-1", reopened, Init, None)
+    let result = await execute(
+      `{ ${typeName}(id: "o-1") { trailEntered { placed { latest first visits } shipped { latest first visits } cancelled { latest first visits } current } } }`,
+    )
+    let read =
+      (result->Obj.magic: JSON.t)
+      ->JSON.Decode.object
+      ->Option.flatMap(r => r->Dict.get("data"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(d => d->Dict.get(typeName))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(o => o->Dict.get("trailEntered"))
+    let state =
+      published
+      ->Array.at(-1)
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(d => d->Dict.get("state"))
+      ->Option.flatMap(JSON.Decode.object)
+    expect(state->Option.flatMap(s => s->Dict.get("trailEntered")))->toEqual(read)
+    expect(
+      state
+      ->Option.mapOr([], Dict.keysToArray)
+      ->Array.filter(
+        k => k->String.startsWith("_entered_") || k->String.startsWith("_visits_") || k == "_trail",
+      ),
+    )->toEqual([])
   })
 })

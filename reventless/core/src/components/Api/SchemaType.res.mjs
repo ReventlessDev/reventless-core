@@ -13,7 +13,6 @@ import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
 import * as CalendarDate$Reventless from "@reventlessdev/reventless-spec/src/semantic/CalendarDate.res.mjs";
 import * as FieldDefault$Reventless from "@reventlessdev/reventless-spec/src/components/FieldDefault.res.mjs";
-import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 function isIdentity(schema) {
   let match = Sury.$Metadata_get(schema, Semantic$Reventless.semanticId);
@@ -402,7 +401,8 @@ function trailShape(parentName, trailField, lifecycleField, schema) {
 }
 
 function trailEntered(typeName, schema) {
-  return Stdlib_Option.map(Stdlib_Option.filter(Lifecycle$Reventless.Trail.readableField(schema), trailField => !Stdlib_Option.getOr(Stdlib_Option.flatMap(StateAnnotations$Reventless.getSpec(schema), spec => spec.internal), []).includes(trailField)), trailField => {
+  return Stdlib_Option.map(Lifecycle$Reventless.Trail.reading(schema), param => {
+    let trailField = param.field;
     let base = typeName + Stdlib_String.capitalize(trailField);
     let visits_0 = base + "Visits";
     let visits_1 = Object.fromEntries([

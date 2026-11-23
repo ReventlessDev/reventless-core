@@ -106,6 +106,7 @@ let buildOperations = (
     ~stateTopicName=entry.stateTopicName,
     ~indexes=ProjectionEntryPoint_Ops.indexesOf(spec.config),
     ~subIdField=ProjectionEntryPoint_Ops.subIdFieldOf(spec.subIdConfig),
+    ~stateSchema=spec.stateSchema,
   )
   ->ProjectionEntryPoint_Ops.withUnionMemberTypes(~stateSchema=spec.stateSchema)
   ->withInjectedId

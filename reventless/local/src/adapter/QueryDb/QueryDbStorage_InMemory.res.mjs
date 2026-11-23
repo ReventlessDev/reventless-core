@@ -167,11 +167,11 @@ function Make(Bus) {
     };
     let publishSaved = (changeKind, id, state) => {
       let subKey = getSubKey(state, subIdField);
-      let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), Stdlib_Option.map(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.field), Stdlib_Option.flatMap(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.values));
+      let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), Stdlib_Option.map(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.field), Stdlib_Option.flatMap(LocalStateChangeDescriptor$ReventlessLocal.retiredSpecFor(name), r => r.values), LocalStateChangeDescriptor$ReventlessLocal.readingFor(name));
       Bus.publishStateChange(name, descriptor);
     };
     let publishRemoved = (id, subKey) => {
-      let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make("Removed", entityKeyFor(id, subKey), undefined, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), undefined, undefined);
+      let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make("Removed", entityKeyFor(id, subKey), undefined, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), undefined, undefined, undefined);
       Bus.publishStateChange(name, descriptor);
     };
     let save = async (id, state, _saveMode, ttl) => {

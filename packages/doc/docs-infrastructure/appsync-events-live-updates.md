@@ -221,7 +221,7 @@ row change in the read model; a detail page receives only its own entity's chang
   "id": "<entityKey>",
   "sortKeyValue": "<updatedAt | createdAt, if present>",
   "seq": "<monotonic ordering token>",
-  "state": { "...": "the full new row — saves only, size permitting" } }
+  "state": { "...": "the new row as a read returns it — saves only, size permitting" } }
 ```
 
 `changeKind` is derived from the DynamoDB stream `eventName`
@@ -242,6 +242,15 @@ actor field on the wire. `Updated` / `Removed` apply in place for all origins
 A save carries its resulting row so a subscriber can update a view it already
 holds without a round-trip back to the read model. A delete carries no `state`
 (there is no new row) and no `sortKeyValue`.
+
+The row has the shape a GraphQL read of it returns, not the stored one. A view
+with a lifecycle trail stores the trail's derived dates as attributes
+(`_entered_<State>`, `_entered_<State>_first`, `_visits_<State>`,
+`_entered_current`, `_trail`); the payload carries them as the
+`<trailField>Entered` object a read returns, with every lifecycle state the row
+never entered as `null` and `visits` as a number, and leaves the attributes out.
+A row updated live therefore replaces the dates it was fetched with. `_change`
+travels as stored.
 
 **The payload is advisory.** A client may always ignore it and refetch, and that
 is what keeps the channel best-effort: a dropped or reordered frame costs
@@ -294,12 +303,14 @@ cost is worked through in
 
 #### Three publishers, one format
 
-The descriptor has three independent implementations with no shared code —
+The descriptor has three independent implementations —
 `LocalStateChangeDescriptor` (both local backends), `StateTopic_AppSync_Ops` (the
 DynamoDB stream relay), and `StateTopicPublish.mjs` (Postgres read models, which
-have no stream, so the projection Lambda publishes for itself). The relay's module
-is deliberately Pulumi-free so a shared core import cannot pull deploy-time code
-into its Lambda graph. `StateChangeDescriptorParityTest` in `reventless-aws`
+have no stream, so the projection Lambda publishes for itself). They share one
+function, spec's `Lifecycle.Trail.toRead`, which gives the row its read shape. The
+relay's module is deliberately Pulumi-free so a shared core import cannot pull
+deploy-time code into its Lambda graph, and it runs with no plugin registry, so
+the deploy hands it each table's trail (below). `StateChangeDescriptorParityTest` in `reventless-aws`
 drives all three through the same logical changes and asserts the descriptors
 match; extend it whenever the wire format changes.
 
@@ -463,7 +474,7 @@ server-side change journal, descriptor-level catch-up
 |---------|-------|-------|
 | Create the Events API + the `default` and `client` namespaces | `AppSync_EventsApi.make` in [`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/alpha/reventless/aws/src/Platform.res) | **Only on the platform/monolithic stack.** Plugin stacks reconstruct a phantom from the `eventsApiArn` / `eventsApiDns` stack exports, so they carry neither namespace. |
 | Advertise the client namespace to browsers | the host-ui `config.json` emission in `Platform.res` | Emits `clientEventsNamespace` alongside the events endpoints. Verify end-to-end with `pnpm run verify:client-publish` in `examples/online-shop-hybrid/platform-aws/`. |
-| Shared StateTopic Lambda (one per events API per stack) | `StateTopic_AppSync.make` (registers) + `StateTopic_AppSync.finish` (builds) in `Platform.res` | `subscriptionInfraHook` calls `make` for every stream-enabled QueryDb in the stack — admin RMs, user-plugin `ReadModelStream`s, and `StateViewSliceStream`s alike. `finish` runs once at the end of `makePlatform` / `deployPlatform` / `deployPlugin` and builds a single Lambda + IAM role/policy + one `EventSourceMapping` per stream, all targeting that shared Lambda. Routing is per-record via the `STATE_TOPIC_MAP` env var (`{ "<ddbTableName>": "<listFieldName>" }`) — the handler reads `record.eventSourceARN`, extracts the table name, and looks up the matching channel root. |
+| Shared StateTopic Lambda (one per events API per stack) | `StateTopic_AppSync.make` (registers) + `StateTopic_AppSync.finish` (builds) in `Platform.res` | `subscriptionInfraHook` calls `make` for every stream-enabled QueryDb in the stack — admin RMs, user-plugin `ReadModelStream`s, and `StateViewSliceStream`s alike. `finish` runs once at the end of `makePlatform` / `deployPlatform` / `deployPlugin` and builds a single Lambda + IAM role/policy + one `EventSourceMapping` per stream, all targeting that shared Lambda. Routing is per-record via the `STATE_TOPIC_MAP` env var (`{ "<ddbTableName>": "<listFieldName>" }`) — the handler reads `record.eventSourceARN`, extracts the table name, and looks up the matching channel root. Beside it, `STATE_RETIRED_MAP` carries each table's `@retired` rule and `STATE_TRAIL_MAP` (`{ "<ddbTableName>": {field, states} }`) the trail whose dates the table's reads carry, both resolved from the state schema at deploy time. |
 | Admin RM live updates | `PluginReadModel`, `PlatformEventGraphReadModel`, `UIFragmentRegistryReadModel` in `Platform.res` | The framework's built-in admin read models (`Platform_Plugins`, `Platform_PlatformEventGraphs`, `Platform_UIFragments`) are stream-enabled and participate in the read model feed — admin lists in the host-shell live-update. UIFragmentRegistry uses `ReadModel_Builder_NoResolver_Stream` because its GraphQL field is served by a dedicated `Platform_UIFragments_Lambda`, not an auto-generated resolver. |
 
 > **Which read models get a stream (and therefore live updates)?** Streaming is

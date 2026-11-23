@@ -2,6 +2,7 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as TaggedUnion$Reventless from "@reventlessdev/reventless-spec/src/components/TaggedUnion.res.mjs";
 import * as StateTopicPublishMjs from "./StateTopicPublish.mjs";
@@ -87,12 +88,13 @@ function withRowChange(base) {
   };
 }
 
-function makeQueryDbOps(queryDbTableName, pgConnection, stateTopicName, indexes, subIdField) {
+function makeQueryDbOps(queryDbTableName, pgConnection, stateTopicName, indexes, subIdField, stateSchema) {
   return withRowChange(pgConnection !== undefined ? StateTopicPublishMjs.withLiveUpdates(QueryDbStorage_Postgres_Runtime$ReventlessAws.opsFor(pgConnection, queryDbTableName, indexes, subIdField), {
       endpoint: process.env["APPSYNC_ENDPOINT"],
       region: process.env["AWS_REGION"],
       topicName: stateTopicName,
-      subIdField: subIdField
+      subIdField: subIdField,
+      reading: Stdlib_Option.flatMap(stateSchema, Lifecycle$Reventless.Trail.reading)
     }) : QueryDbEntryPoint_Ops$ReventlessAws.makeDynamoQueryDbOps(queryDbTableName));
 }
 
@@ -105,4 +107,4 @@ export {
   withRowChange,
   makeQueryDbOps,
 }
-/* DisplayName-Reventless Not a pure module */
+/* Lifecycle-Reventless Not a pure module */

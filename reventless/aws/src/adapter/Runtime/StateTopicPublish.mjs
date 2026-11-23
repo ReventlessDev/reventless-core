@@ -14,7 +14,7 @@
 // Descriptor: { changeKind: "Updated" | "Removed", id: <entityKey>,
 //               sortKeyValue?: <updatedAt | createdAt if present>,
 //               seq: <monotonic ordering token>,
-//               state?: <the full new row, saves only> }
+//               state?: <the new row as a read returns it, saves only> }
 //
 // changeKind is fixed per operation (save→"Updated", delete→"Removed"): a
 // Postgres upsert doesn't distinguish insert vs update, and the Sqlite/InMemory
@@ -30,6 +30,7 @@
 // Lambda execution role via the process.env AWS_* variables.
 
 import { createHmac, createHash } from "node:crypto";
+import { Trail } from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 
 function sha256hex(data) {
   return createHash("sha256").update(typeof data === "string" ? data : JSON.stringify(data)).digest("hex");
@@ -115,7 +116,11 @@ export function nextSequence() {
 // three are held together by StateChangeDescriptorParityTest instead. The strict
 // readings matter and are the ones that file asserts: a non-boolean is not
 // `true`, a non-string is in no set, and an absent field is neither.
-export function makeDescriptor({ changeKind, entityKey, state, seq, retiredField, retiredValues }) {
+//
+// `reading` is the view's trail (`{field, states}`): the row's derived trail
+// attributes then travel as its `<field>Entered` object, as a GraphQL read returns
+// them, through the same `Lifecycle.Trail.toRead` the other two call.
+export function makeDescriptor({ changeKind, entityKey, state, seq, retiredField, retiredValues, reading }) {
   const descriptor = { changeKind, id: entityKey };
   const cell =
     retiredField !== undefined &&
@@ -135,9 +140,13 @@ export function makeDescriptor({ changeKind, entityKey, state, seq, retiredField
   }
   descriptor.seq = seq;
   if (state !== undefined && !retired) {
-    const encoded = JSON.stringify(state);
+    const shaped =
+      state !== null && typeof state === "object" && !Array.isArray(state)
+        ? Trail.toRead(state, reading ?? undefined)
+        : state;
+    const encoded = JSON.stringify(shaped);
     if (encoded.length <= MAX_STATE_CHARS) {
-      descriptor.state = state;
+      descriptor.state = shaped;
     } else {
       console.warn(
         "STATE_PAYLOAD_DOWNGRADED id=" + entityKey + " chars=" + encoded.length,
@@ -159,12 +168,13 @@ export function makeDescriptor({ changeKind, entityKey, state, seq, retiredField
 //                 one; a retired row publishes metadata-only.
 // - retiredValues: the states that retire the row, for the state form. Absent is
 //                 the boolean form, where the flag is `true`.
-export async function publishStateChange({ endpoint, region, topicName, entityKey, changeKind, state, dedupeId, retiredField, retiredValues }) {
+// - reading:      the view's trail, `{field, states}`, when its reads carry the dates.
+export async function publishStateChange({ endpoint, region, topicName, entityKey, changeKind, state, dedupeId, retiredField, retiredValues, reading }) {
   if (!endpoint || !topicName) return; // not live-enabled — no-op
   try {
     const url = new URL(endpoint);
     const channel = "/default/" + pathSegment(topicName) + "/" + pathSegment(entityKey);
-    const descriptor = makeDescriptor({ changeKind, entityKey, state, seq: nextSequence(), retiredField, retiredValues });
+    const descriptor = makeDescriptor({ changeKind, entityKey, state, seq: nextSequence(), retiredField, retiredValues, reading });
     const body = JSON.stringify({
       id: dedupeId || (topicName + ":" + entityKey + ":" + changeKind),
       channel,
@@ -211,14 +221,14 @@ export function entityKeyFor(id, state, subIdField) {
 
 // Wrap a Postgres QueryDb operation set so every save/delete also publishes a
 // live-update descriptor. `liveConfig` = { endpoint, region, topicName,
-// subIdField }. When endpoint/topicName are absent the ops pass through
+// subIdField, reading? }. When endpoint/topicName are absent the ops pass through
 // unchanged (non-stream / non-live read models pay nothing).
 //
 // Note on batch ops: saveBatch/deleteBatch fan out one publish per item, after
 // the batch write resolves — the row set is committed as a unit, and each row
 // gets its own descriptor exactly as N single writes would.
 export function withLiveUpdates(ops, liveConfig) {
-  const { endpoint, topicName, region, subIdField } = liveConfig || {};
+  const { endpoint, topicName, region, subIdField, reading } = liveConfig || {};
   if (!endpoint || !topicName) return ops;
   // `publish` is injectable for headless testing (default = the real SigV4
   // publisher); tests pass a capturing stub so the wrapping logic can be
@@ -231,6 +241,7 @@ export function withLiveUpdates(ops, liveConfig) {
       entityKey: entityKeyFor(id, state, subIdField),
       changeKind: "Updated",
       state,
+      reading,
     });
 
   const publishRemovedKey = async (entityKey) =>

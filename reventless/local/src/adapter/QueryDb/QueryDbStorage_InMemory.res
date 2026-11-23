@@ -203,6 +203,7 @@ module Make = (Bus: LocalBus.T) => {
         ~retiredValues=?LocalStateChangeDescriptor.retiredSpecFor(name)->Option.flatMap(r =>
           r.values
         ),
+        ~reading=?LocalStateChangeDescriptor.readingFor(name),
       )
       Bus.publishStateChange(~name, ~descriptor)
     }

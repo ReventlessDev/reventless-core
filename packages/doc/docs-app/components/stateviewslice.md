@@ -313,7 +313,9 @@ lifecycle state (lower-case first letter) and `current`:
 A state the row never entered reads `null`; a reopened order reads `placed {
 visits: 2 }` with `first` and `latest` apart. The object is absent when the trail
 field is `@internal`, and a lifecycle state named `Current` is refused when the
-API is generated, because its key would collide with `current`.
+API is generated, because its key would collide with `current`. A live update
+carries the row with the same object, built from the same attributes, so a row
+updated live does not keep the dates it was fetched with.
 
 ### Filtering and Sorting by a State's Date
 

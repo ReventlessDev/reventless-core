@@ -96,6 +96,8 @@ type streamEntry = {
   // Lambda has no plugin registry in process to resolve it at request time.
   retiredField: option<string>,
   retiredValues: option<array<string>>,
+  // The trail whose dates the read model's reads carry, resolved here for the same reason.
+  reading?: Reventless.Lifecycle.Trail.reading,
 }
 
 // One registry per events API, keyed by `eventsApi.name` (the static Pulumi
@@ -139,6 +141,7 @@ let makeForTable = (
   ~topicName: string,
   ~retiredField: option<string>=?,
   ~retiredValues: option<array<string>>=?,
+  ~reading: option<Reventless.Lifecycle.Trail.reading>=?,
   ~eventsApi: AppSync_EventsApi.t,
   ~opts as _: Pulumi.CustomResourceOptions.t,
 ) => {
@@ -158,7 +161,7 @@ let makeForTable = (
   registry->Dict.set(
     key,
     entries->Array.concat([
-      {tableName: checkedTableName, streamArn, topicName, retiredField, retiredValues},
+      {tableName: checkedTableName, streamArn, topicName, retiredField, retiredValues, ?reading},
     ]),
   )
 }
@@ -198,6 +201,9 @@ let make = (
     ->Option.flatMap(Reventless.StateAnnotations.getSpec)
     ->Option.flatMap(spec => spec.retired)
     ->Option.flatMap(r => r.values),
+    ~reading=?ReventlessCore.Plugin_Helpers.stateSchemaRegistry
+    ->Dict.get(readModelName)
+    ->Option.flatMap(Reventless.Lifecycle.Trail.reading),
     ~eventsApi,
     ~opts,
   )
@@ -314,6 +320,22 @@ let finish = (~eventsApi: AppSync_EventsApi.t, ~opts: Pulumi.CustomResourceOptio
         dict->JSON.Encode.object->JSON.stringify
       })
 
+    // STATE_TRAIL_MAP env var — `{ <tableName>: {field, states} }`, for the tables
+    // whose reads carry a trail's dates; the relay turns the stored attributes into them.
+    let trailMapJson =
+      entries
+      ->Array.map(e => e.tableName)
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(tableNames => {
+        let dict = Dict.make()
+        tableNames->Array.forEachWithIndex((tableName, i) =>
+          (entries->Array.getUnsafe(i)).reading->Option.forEach(
+            r => dict->Dict.set(tableName, r->Reventless.Lifecycle.Trail.readingToJson),
+          )
+        )
+        dict->JSON.Encode.object->JSON.stringify
+      })
+
     // Shared Lambda — the compiled `_Ops` handler is identical for every
     // stream-enabled RM; routing is per-record via STATE_TOPIC_MAP env var.
     // Bundle reventless-aws (the handler + its node:crypto signer + the
@@ -374,6 +396,7 @@ let finish = (~eventsApi: AppSync_EventsApi.t, ~opts: Pulumi.CustomResourceOptio
               ("APPSYNC_ENDPOINT", appsyncEndpoint->Pulumi.Output.asInput),
               ("STATE_TOPIC_MAP", topicMapJson->Pulumi.Output.asInput),
               ("STATE_RETIRED_MAP", retiredMapJson->Pulumi.Output.asInput),
+              ("STATE_TRAIL_MAP", trailMapJson->Pulumi.Output.asInput),
               ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
               ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
               Util_LambdaLogging.logLevelEntry(),

@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
@@ -21,7 +22,7 @@ import * as StateTopic_AppSync_Helpers$ReventlessAws from "./StateTopic_AppSync_
 
 let registry = {};
 
-function makeForTable(tableName, streamArn, partitionKeyName, topicName, retiredField, retiredValues, eventsApi, param) {
+function makeForTable(tableName, streamArn, partitionKeyName, topicName, retiredField, retiredValues, reading, eventsApi, param) {
   let checkedTableName = Pulumi.all([
     tableName,
     partitionKeyName
@@ -37,13 +38,14 @@ function makeForTable(tableName, streamArn, partitionKeyName, topicName, retired
       streamArn: streamArn,
       topicName: topicName,
       retiredField: retiredField,
-      retiredValues: retiredValues
+      retiredValues: retiredValues,
+      reading: reading
     }]);
 }
 
 function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
   let streamResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, readModelName));
-  makeForTable(streamResource.name, Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource), Pulumi.output(StateTopic_AppSync_Helpers$ReventlessAws.entityKeyPartitionAttribute), topicName, Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.values), eventsApi, opts);
+  makeForTable(streamResource.name, Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource), Pulumi.output(StateTopic_AppSync_Helpers$ReventlessAws.entityKeyPartitionAttribute), topicName, Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.field), Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], StateAnnotations$Reventless.getSpec), spec => spec.retired), r => r.values), Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModelName], Lifecycle$Reventless.Trail.reading), eventsApi, opts);
 }
 
 function finish(eventsApi, opts) {
@@ -116,6 +118,13 @@ function finish(eventsApi, opts) {
     });
     return JSON.stringify(dict);
   });
+  let trailMapJson = Pulumi.all(entries.map(e => e.tableName)).apply(tableNames => {
+    let dict = {};
+    tableNames.forEach((tableName, i) => Stdlib_Option.forEach(entries[i].reading, r => {
+      dict[tableName] = Lifecycle$Reventless.Trail.readingToJson(r);
+    }));
+    return JSON.stringify(dict);
+  });
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
@@ -150,6 +159,10 @@ function finish(eventsApi, opts) {
         [
           "STATE_RETIRED_MAP",
           retiredMapJson
+        ],
+        [
+          "STATE_TRAIL_MAP",
+          trailMapJson
         ],
         [
           "NODE_OPTIONS",

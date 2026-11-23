@@ -155,6 +155,60 @@ describe("Lifecycle.Trail.writeDerived:", () => {
   })
 })
 
+// A stored row as a read returns it, which is also what a live update carries.
+describe("Lifecycle.Trail.toRead:", () => {
+  let stored = () => {
+    let row = dict(`{"id":"o1","lifecycle":"Placed","trail":[{"state":"Placed","at":"2026-03-02T09:00:00Z"},{"state":"Cancelled","at":"2026-03-02T10:00:00Z"},{"state":"Placed","at":"2026-03-02T11:00:00Z"}]}`)
+    row->Lifecycle.Trail.writeDerived(~field="trail")
+    row
+  }
+
+  testSync("names the trail and the lifecycle's states of a view", () =>
+    expect(Lifecycle.Trail.reading(unknownOrder))->toEqual(
+      Some({Lifecycle.Trail.field: "trail", states: ["Placed", "Shipped", "Cancelled"]}),
+    )
+  )
+
+  testSync("folds the derived attributes into the entered object", () => {
+    let read = stored()->Lifecycle.Trail.toRead(~reading=?Lifecycle.Trail.reading(unknownOrder))
+    expect(read->JSON.Encode.object)->toEqual(
+      JSON.parseOrThrow(`{"id":"o1","lifecycle":"Placed","trail":[{"state":"Placed","at":"2026-03-02T09:00:00Z"},{"state":"Cancelled","at":"2026-03-02T10:00:00Z"},{"state":"Placed","at":"2026-03-02T11:00:00Z"}],"trailEntered":{"placed":{"latest":"2026-03-02T11:00:00Z","first":"2026-03-02T09:00:00Z","visits":2},"shipped":null,"cancelled":{"latest":"2026-03-02T10:00:00Z","first":"2026-03-02T10:00:00Z","visits":1},"current":"2026-03-02T11:00:00Z"}}`),
+    )
+  })
+
+  testSync("travels as JSON and back unchanged", () => {
+    let reading = Lifecycle.Trail.reading(unknownOrder)
+    expect(
+      reading->Option.flatMap(
+        r =>
+          r
+          ->Lifecycle.Trail.readingToJson
+          ->JSON.stringify
+          ->JSON.parseOrThrow
+          ->Lifecycle.Trail.readingFromJson,
+      ),
+    )->toEqual(reading)
+  })
+
+  testSync("leaves the derived attributes out without a reading", () =>
+    expect(stored()->Lifecycle.Trail.toRead->Dict.keysToArray)->toEqual([
+      "id",
+      "lifecycle",
+      "trail",
+    ])
+  )
+
+  testSync("gives a row without a trail an entered object of nulls", () => {
+    let read =
+      dict(`{"id":"o2","lifecycle":"Placed"}`)->Lifecycle.Trail.toRead(
+        ~reading={Lifecycle.Trail.field: "trail", states: ["Placed", "Shipped"]},
+      )
+    expect(read->Dict.get("trailEntered"))->toEqual(
+      Some(JSON.parseOrThrow(`{"placed":null,"shipped":null,"current":null}`)),
+    )
+  })
+})
+
 // A stored row's trail and the derived attributes it should carry, compared
 // without changing the row: what a backfill writes.
 describe("Lifecycle.Trail.rederive:", () => {

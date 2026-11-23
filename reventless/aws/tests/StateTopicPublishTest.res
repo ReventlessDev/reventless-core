@@ -79,6 +79,16 @@ async function(scenario) {
     case "deleteBatch":
       await w(undefined).deleteBatch([["a", undefined], ["b", undefined]]);
       break;
+    case "save-trail": {
+      const trailed = withLiveUpdates(ops, { ...cfg(undefined), reading: { field: "trail", states: ["Placed", "Shipped"] } });
+      await trailed.save("o1", {
+        id: "o1",
+        trail: [{ state: "Placed", at: "t1" }],
+        _entered_Placed: "t1", _entered_Placed_first: "t1", _visits_Placed: 1,
+        _entered_current: "t1", _trail: "1",
+      }, "Insert", undefined);
+      break;
+    }
     case "gated-no-topic": {
       const gatedOps = withLiveUpdates(ops, { endpoint: "https://x", region: "r", topicName: undefined, publish });
       await gatedOps.save("p1", { id: "p1" }, "Insert", undefined);
@@ -178,6 +188,19 @@ describe("withLiveUpdates (B3.3a Postgres live updates)", () => {
     expect(str(arr->Array.getUnsafe(0), "entityKey"))->toEqual(Some("a"))
     expect(str(arr->Array.getUnsafe(1), "entityKey"))->toEqual(Some("b"))
   })
+
+  testAsync(
+    "a save on a view with a trail publishes its dates as a read returns them",
+    async () => {
+      let c = await run("save-trail")
+      let call = calls(c)->Array.getUnsafe(0)
+      expect(descriptorField(call, "state"))->toEqual(
+        Some(
+          JSON.parseOrThrow(`{"id":"o1","trail":[{"state":"Placed","at":"t1"}],"trailEntered":{"placed":{"latest":"t1","first":"t1","visits":1},"shipped":null,"current":"t1"}}`),
+        ),
+      )
+    },
+  )
 
   testAsync("no topicName → ops pass through, nothing published", async () => {
     let c = await run("gated-no-topic")
