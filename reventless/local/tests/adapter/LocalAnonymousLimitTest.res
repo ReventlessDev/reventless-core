@@ -70,13 +70,20 @@ describe("the limit on anonymous doors", () => {
     expect((doorSpent, views))->toEqual((true, [true, true, true, true, false]))
   })
 
-  testSync("a view's limit defaults to 300 an hour where none is set", () => {
+  testSync("nothing is limited where no limit is set", () => {
+    NodeProcess.env->Dict.delete(Reventless.AnonymousRequestLimit.envKey)
     NodeProcess.env->Dict.delete(Reventless.AnonymousRequestLimit.viewEnvKey)
     LocalAnonymousLimit.reset()
-    expect(LocalAnonymousLimit.configured(~kind=View))->toEqual({
-      Reventless.AnonymousRequestLimit.requests: 300,
-      windowSeconds: 3600,
-    })
+    let ctx = ctxFrom("10.0.0.1")
+    let doors = Array.fromInitializer(
+      ~length=50,
+      _ => throttled(~rule=AllowAnonymous, ~ctx)->Option.isSome,
+    )
+    let views = Array.fromInitializer(
+      ~length=500,
+      _ => LocalAnonymousLimit.admit(~kind=View, ~door="Windows", ~source="10.0.0.1"),
+    )
+    expect((doors->Array.some(x => x), views->Array.every(x => x)))->toEqual((false, true))
   })
 
   testSync("a mistyped limit fails rather than becoming the default", () => {

@@ -46,9 +46,11 @@ REVENTLESS_ANONYMOUS_VIEW_LIMIT=300/3600
 ```
 
 A value that does not parse fails the request rather than falling back to the
-default. The local platform enforces both on its GraphQL doors and views; on AWS
-they are `platform:anonymousRequestLimit` and `platform:anonymousViewLimit` on the
-platform stack, enforced by the API for visitors.
+default. On AWS they are `platform:anonymousRequestLimit` and
+`platform:anonymousViewLimit` on the platform stack, enforced by the API for
+visitors, with the defaults above when unset. The local platform limits nothing
+unless a variable is set: it is where an app is built, and a limit there only gets
+in the way. Set one to see the limit at work.
 
 How often an *address* may be written to is a different limit and belongs to the
 domain: count it in a `decide`, where it is recorded and survives a replay.
