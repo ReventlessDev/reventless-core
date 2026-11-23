@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-11-23
+- feat(spec): energy is power held over time ([a3a0f54](https://github.com/ReventlessDev/reventless-core/commit/a3a0f54a729db884bbdeecd4371ed7b4be1b821c))
+### 2026-11-23
 - feat(core)!: a door open to visitors keeps no audit log ([1ff2c23](https://github.com/ReventlessDev/reventless-core/commit/1ff2c23fca3b66479d76e2d4e92b24ad6f45e94a))
 - feat(core): a plugin with doors for visitors counts their requests in a view its operators read ([a8e7612](https://github.com/ReventlessDev/reventless-core/commit/a8e76126ed5d3476c09fdd3f2b4a51cc2288f6e0))
 - feat(local): the local platform limits visitors only where a limit is set ([c05ba3d](https://github.com/ReventlessDev/reventless-core/commit/c05ba3d79ab3088a87ee4a4de9d60e3c20fa159f))
