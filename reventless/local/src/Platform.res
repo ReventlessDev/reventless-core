@@ -1900,17 +1900,23 @@ module MakeWithConfig = (
     // The sign-in notice is followed only where there is a shell to serve it and
     // a `.reventless` folder to read it from.
     let signInNoticeFile = hostUiDir->Option.flatMap(_ => SignInNotice.followed())
-    ShellConfig.emit(
-      ~dir=?hostUiDir,
-      ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
-      // Names the module `UiSlots.emit` serves below. Both or neither: a key
-      // without the file is a 404 the shell survives quietly, and a file without
-      // the key is a module nothing imports.
-      ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
-      ~signInNoticeFile?,
-      ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
-      ~i18n=?hostUiBundle->Option.flatMap(cfg => cfg.i18n),
-    )
+    // A check run (`check-start`) reads what a start reads and writes no file a running app reads:
+    // the shell's `config.json`, hints, slots, notice, catalogues and manifest stay as the platform
+    // that serves them wrote them.
+    let servesShell = LocalCheckStart.writesShellFiles()
+    if servesShell {
+      ShellConfig.emit(
+        ~dir=?hostUiDir,
+        ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
+        // Names the module `UiSlots.emit` serves below. Both or neither: a key
+        // without the file is a 404 the shell survives quietly, and a file without
+        // the key is a module nothing imports.
+        ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+        ~signInNoticeFile?,
+        ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
+        ~i18n=?hostUiBundle->Option.flatMap(cfg => cfg.i18n),
+      )
+    }
     // What the plugins declare about admission is read once their structures
     // have landed. First the refusal: a role declared self-service or by
     // invitation that nothing here honors stops the platform, as a role no
@@ -1931,71 +1937,87 @@ module MakeWithConfig = (
         structures,
         ~initially=LocalSelfRegistration.initially(),
       )->Option.forEach(selfRegistration =>
-        ShellConfig.emit(
-          ~dir=?hostUiDir,
-          ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
-          ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
-          ~signInNoticeFile?,
-          ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
-          ~i18n=?hostUiBundle->Option.flatMap(cfg => cfg.i18n),
-          ~selfRegistration,
-        )
+        if servesShell {
+          ShellConfig.emit(
+            ~dir=?hostUiDir,
+            ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
+            ~uiSlotsFile=?hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+            ~signInNoticeFile?,
+            ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
+            ~i18n=?hostUiBundle->Option.flatMap(cfg => cfg.i18n),
+            ~selfRegistration,
+          )
+        }
       )
     })
+
     // Unconditional for the same reason, and one file over: it is also what
     // restores the shell package's own hints for a platform that has stopped
     // declaring its own.
-    UiHints.emit(~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile), ~dir=?hostUiDir)
-    // The dev loop for the file just written. Editing hints is presentation
-    // work — you change a label, you want to see the label — and routing that
-    // through a platform restart puts fifteen seconds between the two. The
-    // watcher re-serves the file and says so on the events channel every shell
-    // already holds, so the menu restacks where it stands.
-    //
-    // Returned watcher deliberately dropped: it is unref'd and lives exactly as
-    // long as the process, like the servers above it, and holding it to close
-    // would imply a shutdown path this platform does not have.
-    let _ = UiHints.watch(
-      ~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile),
-      ~dir=?hostUiDir,
-      ~onReload=LocalEvents_Server.broadcastUiHintsChanged,
-    )
-    // The same pair for the module that draws what a hint cannot say. Also
-    // unconditional, and for a reason the hints file does not have: this is what
-    // removes a module a platform has stopped declaring, and leaving one behind
-    // would go on drawing regions with nothing in the deployment to explain it.
-    UiSlots.emit(~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile), ~dir=?hostUiDir)
-    let _ = UiSlots.watch(
-      ~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
-      ~dir=?hostUiDir,
-      ~onReload=LocalEvents_Server.broadcastUiSlotsChanged,
-    )
-    // The notice the sign-in page shows. Served unconditionally, as it is also
-    // what removes a notice left from a run whose source has gone; then followed,
-    // with a signal on the events channel so an open sign-in page re-fetches it.
-    switch SignInNotice.emit(~source=SignInNotice.sourcePath(), ~dir=?hostUiDir) {
-    | Ok() => ()
-    | Error(e) => log.warn(~comp="SignInNotice", `${SignInNotice.fileName} was not served: ${e}`)
-    }
-    signInNoticeFile->Option.forEach(source => {
-      let _ = SignInNotice.watch(
-        ~source,
+    // The writers below only for a platform that serves the shell; a check run reaches past them
+    // to the catalogue the server's messages are written from.
+    if servesShell {
+      UiHints.emit(
+        ~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile),
         ~dir=?hostUiDir,
-        ~onReload=LocalEvents_Server.broadcastSignInNoticeChanged,
       )
-    })
-    // The app's own words, one merged catalogue per offered language, and the dev loop that
-    // re-merges them when a translation is confirmed. Unconditional: it is also what removes the
-    // catalogues of a platform that stopped declaring them.
-    I18n.emit(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
+      // The dev loop for the file just written. Editing hints is presentation
+      // work — you change a label, you want to see the label — and routing that
+      // through a platform restart puts fifteen seconds between the two. The
+      // watcher re-serves the file and says so on the events channel every shell
+      // already holds, so the menu restacks where it stands.
+      //
+      // Returned watcher deliberately dropped: it is unref'd and lives exactly as
+      // long as the process, like the servers above it, and holding it to close
+      // would imply a shutdown path this platform does not have.
+      let _ = UiHints.watch(
+        ~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile),
+        ~dir=?hostUiDir,
+        ~onReload=LocalEvents_Server.broadcastUiHintsChanged,
+      )
+      // The same pair for the module that draws what a hint cannot say. Also
+      // unconditional, and for a reason the hints file does not have: this is what
+      // removes a module a platform has stopped declaring, and leaving one behind
+      // would go on drawing regions with nothing in the deployment to explain it.
+      UiSlots.emit(
+        ~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+        ~dir=?hostUiDir,
+      )
+      let _ = UiSlots.watch(
+        ~uiSlotsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiSlotsFile),
+        ~dir=?hostUiDir,
+        ~onReload=LocalEvents_Server.broadcastUiSlotsChanged,
+      )
+      // The notice the sign-in page shows. Served unconditionally, as it is also
+      // what removes a notice left from a run whose source has gone; then followed,
+      // with a signal on the events channel so an open sign-in page re-fetches it.
+      switch SignInNotice.emit(~source=SignInNotice.sourcePath(), ~dir=?hostUiDir) {
+      | Ok() => ()
+      | Error(e) => log.warn(~comp="SignInNotice", `${SignInNotice.fileName} was not served: ${e}`)
+      }
+      signInNoticeFile->Option.forEach(source => {
+        let _ = SignInNotice.watch(
+          ~source,
+          ~dir=?hostUiDir,
+          ~onReload=LocalEvents_Server.broadcastSignInNoticeChanged,
+        )
+      })
+      // The app's own words, one merged catalogue per offered language, and the dev loop that
+      // re-merges them when a translation is confirmed. Unconditional: it is also what removes the
+      // catalogues of a platform that stopped declaring them.
+      I18n.emit(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
+    }
     // The same catalogues are what the server's own messages are written from.
     LocalCapabilities.registerText(
       hostUiBundle
       ->Option.flatMap(cfg => cfg.i18n)
       ->Option.mapOr(Reventless.Text.sourceOnly, I18n.text),
     )
-    let _ = I18n.watch(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
+    if servesShell {
+      let _ = I18n.watch(~i18n=hostUiBundle->Option.flatMap(cfg => cfg.i18n), ~dir=?hostUiDir)
+    }
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
+    | _ if !servesShell => ()
     | None => ()
     | Some(cfg) =>
       bakeManifest(~pluginComponents=plugins, ~config=cfg, ~dir=hostUiDir)

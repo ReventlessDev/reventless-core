@@ -15,6 +15,11 @@ let active = (~env=NodeProcess.env, ()): bool =>
   | _ => false
   }
 
+/** Whether this process writes the files a running app's shell reads (`config.json`, hints, slots,
+    the sign-in notice, catalogues, the baked manifest): a start does, a check run does not, so
+    checking beside a running platform leaves its open page as it was. */
+let writesShellFiles = (~env=NodeProcess.env, ()): bool => !active(~env, ())
+
 // ── The command ──────────────────────────────────────────────────────────────
 
 // Emitted by ReScript as a literal `import(...)`: the app's `Main` is only known at run time.

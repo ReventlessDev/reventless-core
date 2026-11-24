@@ -1451,27 +1451,40 @@ function MakeWithConfig(Config) {
     subscribeToPluginEvents();
     let hostUiDir = HostShellDist$ReventlessLocal.resolve(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.assetsDir));
     let signInNoticeFile = Stdlib_Option.flatMap(hostUiDir, param => SignInNotice$ReventlessLocal.followed());
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), signInNoticeFile, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    let servesShell = LocalCheckStart$ReventlessLocal.writesShellFiles(undefined, undefined);
+    if (servesShell) {
+      ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), signInNoticeFile, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    }
     whenStructuresLanded(plugins$1, structures => {
       AdmissionCheck$Reventless.check(structures, LocalCapabilities$ReventlessLocal.provisioned(), OwnerScope$Reventless.elevatedGroups(), Role$Reventless.adminGroup(), true);
-      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures, LocalSelfRegistration$ReventlessLocal.initially()), selfRegistration => ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), signInNoticeFile, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir));
+      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures, LocalSelfRegistration$ReventlessLocal.initially()), selfRegistration => {
+        if (servesShell) {
+          return ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), signInNoticeFile, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+        }
+      });
     });
-    UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
-    UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
-    UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
-    UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
-    let e = SignInNotice$ReventlessLocal.emit(SignInNotice$ReventlessLocal.sourcePath(), hostUiDir);
-    if (e.TAG !== "Ok") {
-      log.warn("SignInNotice", undefined, SignInNotice$ReventlessLocal.fileName + ` was not served: ` + e._0);
+    if (servesShell) {
+      UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
+      UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
+      UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
+      UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
+      let e = SignInNotice$ReventlessLocal.emit(SignInNotice$ReventlessLocal.sourcePath(), hostUiDir);
+      if (e.TAG !== "Ok") {
+        log.warn("SignInNotice", undefined, SignInNotice$ReventlessLocal.fileName + ` was not served: ` + e._0);
+      }
+      Stdlib_Option.forEach(signInNoticeFile, source => {
+        SignInNotice$ReventlessLocal.watch(source, hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastSignInNoticeChanged);
+      });
+      I18n$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     }
-    Stdlib_Option.forEach(signInNoticeFile, source => {
-      SignInNotice$ReventlessLocal.watch(source, hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastSignInNoticeChanged);
-    });
-    I18n$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     LocalCapabilities$ReventlessLocal.registerText(Stdlib_Option.mapOr(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), Text$Reventless.sourceOnly, I18n$ReventlessLocal.text));
-    I18n$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    if (servesShell) {
+      I18n$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    }
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
-    if (cfg !== undefined) {
+    if (!servesShell || cfg === undefined) {
+      
+    } else {
       bakeManifest(plugins$1, cfg, hostUiDir);
       Stdlib_Option.forEach(Stdlib_Option.flatMap(Role$Reventless.providedGroups(), provided => BakedManifest$ReventlessLocal.unheldWarning(cfg, provided)), message => log.warn("BakedManifest", undefined, message));
     }
@@ -3319,27 +3332,40 @@ function Make($star) {
     subscribeToPluginEvents();
     let hostUiDir = HostShellDist$ReventlessLocal.resolve(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.assetsDir));
     let signInNoticeFile = Stdlib_Option.flatMap(hostUiDir, param => SignInNotice$ReventlessLocal.followed());
-    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), signInNoticeFile, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    let servesShell = LocalCheckStart$ReventlessLocal.writesShellFiles(undefined, undefined);
+    if (servesShell) {
+      ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), signInNoticeFile, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    }
     whenStructuresLanded(plugins$1, structures => {
       AdmissionCheck$Reventless.check(structures, LocalCapabilities$ReventlessLocal.provisioned(), OwnerScope$Reventless.elevatedGroups(), Role$Reventless.adminGroup(), true);
-      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures, LocalSelfRegistration$ReventlessLocal.initially()), selfRegistration => ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), signInNoticeFile, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir));
+      Stdlib_Option.forEach(Platform_SelfRegistration$ReventlessCore.fromStructures(structures, LocalSelfRegistration$ReventlessLocal.initially()), selfRegistration => {
+        if (servesShell) {
+          return ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), signInNoticeFile, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), selfRegistration, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+        }
+      });
     });
-    UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
-    UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
-    UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
-    UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
-    let e = SignInNotice$ReventlessLocal.emit(SignInNotice$ReventlessLocal.sourcePath(), hostUiDir);
-    if (e.TAG !== "Ok") {
-      log.warn("SignInNotice", undefined, SignInNotice$ReventlessLocal.fileName + ` was not served: ` + e._0);
+    if (servesShell) {
+      UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir);
+      UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
+      UiSlots$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir);
+      UiSlots$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiSlotsFile), hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastUiSlotsChanged);
+      let e = SignInNotice$ReventlessLocal.emit(SignInNotice$ReventlessLocal.sourcePath(), hostUiDir);
+      if (e.TAG !== "Ok") {
+        log.warn("SignInNotice", undefined, SignInNotice$ReventlessLocal.fileName + ` was not served: ` + e._0);
+      }
+      Stdlib_Option.forEach(signInNoticeFile, source => {
+        SignInNotice$ReventlessLocal.watch(source, hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastSignInNoticeChanged);
+      });
+      I18n$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     }
-    Stdlib_Option.forEach(signInNoticeFile, source => {
-      SignInNotice$ReventlessLocal.watch(source, hostUiDir, LocalEvents_Server$ReventlessLocal.broadcastSignInNoticeChanged);
-    });
-    I18n$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
     LocalCapabilities$ReventlessLocal.registerText(Stdlib_Option.mapOr(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), Text$Reventless.sourceOnly, I18n$ReventlessLocal.text));
-    I18n$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    if (servesShell) {
+      I18n$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.i18n), hostUiDir);
+    }
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
-    if (cfg !== undefined) {
+    if (!servesShell || cfg === undefined) {
+      
+    } else {
       bakeManifest(plugins$1, cfg, hostUiDir);
       Stdlib_Option.forEach(Stdlib_Option.flatMap(Role$Reventless.providedGroups(), provided => BakedManifest$ReventlessLocal.unheldWarning(cfg, provided)), message => log.warn("BakedManifest", undefined, message));
     }

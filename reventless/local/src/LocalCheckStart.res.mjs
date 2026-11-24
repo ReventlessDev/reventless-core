@@ -22,6 +22,11 @@ function active(envOpt, param) {
   }
 }
 
+function writesShellFiles(envOpt, param) {
+  let env = envOpt !== undefined ? envOpt : process.env;
+  return !active(env, undefined);
+}
+
 let usage = `Usage: check-start [--json] [<mainModule>]
 
   <mainModule>  the app's compiled start module; default src/Main.res.mjs
@@ -136,6 +141,7 @@ function main() {
 export {
   envVar,
   active,
+  writesShellFiles,
   usage,
   parseArgs,
   cli,

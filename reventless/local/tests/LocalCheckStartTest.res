@@ -37,6 +37,16 @@ describe("LocalCheckStart.active", () => {
   })
 })
 
+describe("LocalCheckStart.writesShellFiles", () => {
+  // A check run beside a running platform must not rewrite the files its open page reads.
+  testSync("a start writes the shell's files, a check run none", () => {
+    expect(LocalCheckStart.writesShellFiles(~env=Dict.make(), ()))->toBe(true)
+    expect(
+      LocalCheckStart.writesShellFiles(~env=Dict.fromArray([(LocalCheckStart.envVar, "1")]), ()),
+    )->toBe(false)
+  })
+})
+
 describe("LocalCheckStart.enterCheckMode", () => {
   testSync("checks in memory and quietly, keeping a log level the caller chose", () => {
     let env = Dict.fromArray([
