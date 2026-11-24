@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.362 (2026-11-24)
+
+### Features
+
+* **local:** the local mail sender takes the app's name ([776015a](https://github.com/ReventlessDev/reventless-core/commit/776015aa324edfce7a632faea4d316a39ccf4870))
+
+
 # 1.0.0-alpha.361 (2026-11-23)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

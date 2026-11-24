@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.348 (2026-11-24)
+
+### Bug Fixes
+
+* **local:** a start check writes none of the files a running shell reads ([170a0b4](https://github.com/ReventlessDev/reventless-core/commit/170a0b4ca7e2b229ea13cd62af15886dcc5e14e7))
+### Features
+
+* **local:** the local mail sender takes the app's name ([776015a](https://github.com/ReventlessDev/reventless-core/commit/776015aa324edfce7a632faea4d316a39ccf4870))
+
+
 # 3.0.0-alpha.347 (2026-11-23)
 
 ### Bug Fixes
