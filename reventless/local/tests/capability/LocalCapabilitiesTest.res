@@ -67,3 +67,18 @@ describe("LocalCapabilities.unmetWarning", () => {
     expect(LocalCapabilities.unmetWarning(~declared=[]))->toEqual(None)
   })
 })
+
+describe("Capability_Messaging_Log.senderFor", () => {
+  // A root that names its app sends as that app, marked local, from an address that cannot
+  // resolve; one that names none keeps the platform's own sender.
+  testSync("an app's mail says whose it is", () => {
+    expect(Capability_Messaging_Log.senderFor(~appName="Amperia"))->toEqual((
+      "Amperia (local)",
+      "notifications@amperia.test",
+    ))
+    expect(Capability_Messaging_Log.senderFor(~appName="Green Fields"))->toEqual((
+      "Green Fields (local)",
+      "notifications@green-fields.test",
+    ))
+  })
+})

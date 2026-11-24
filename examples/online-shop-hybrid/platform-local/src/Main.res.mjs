@@ -18,7 +18,7 @@ let Platform = Platform$ReventlessLocal.Make({});
 
 OwnerScope$Reventless.setElevatedRoles(Storefront$OnlineShopHybridSeed.elevatedRoles);
 
-let messagingSender = Capability_Messaging_Log$ReventlessLocal.make();
+let messagingSender = Capability_Messaging_Log$ReventlessLocal.make(undefined, undefined);
 
 let identityProvider = Capability_IdentityProvider_AccountStore$ReventlessLocal.make(undefined, undefined);
 
