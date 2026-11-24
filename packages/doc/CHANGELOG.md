@@ -718,6 +718,9 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-24
+- feat(spec): a reference code is made by the platform and found by its value ([41c8e83](https://github.com/ReventlessDev/reventless-core/commit/41c8e83b507e9cd5222394472cfee360d836a49b))
+- docs(plan): a reference code is made by the platform and found by its value ([f71c3f8](https://github.com/ReventlessDev/reventless-core/commit/f71c3f8befd89fa94b947029068d33d31460d54a))
 ### 2026-11-23
 - feat(spec): energy is power held over time ([a3a0f54](https://github.com/ReventlessDev/reventless-core/commit/a3a0f54a729db884bbdeecd4371ed7b4be1b821c))
 ### 2026-11-23
