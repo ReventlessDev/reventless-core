@@ -2,10 +2,13 @@
 
 
 function characters(alphabet) {
-  if (alphabet === "Digits") {
-    return "0123456789";
-  } else {
-    return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  switch (alphabet) {
+    case "Digits" :
+      return "0123456789";
+    case "UrlSafe" :
+      return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    case "Readable" :
+      return "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
   }
 }
 

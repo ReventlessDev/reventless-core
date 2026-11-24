@@ -312,6 +312,13 @@
       "readBy": [ "OwnerInference", "PiiInference", "StateAnnotations" ]
     },
     {
+      "name": "issued",
+      "positions": [ "field.command" ],
+      "args": "none",
+      "summary": "The reference code the platform makes for this command: filled on write, never sent by a caller.",
+      "readBy": [ "IssuedInference" ]
+    },
+    {
       "name": "sensitive",
       "positions": [
         "field.command", "field.event", "field.consumedEvent", "field.state",

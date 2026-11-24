@@ -10,6 +10,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
+import * as ReferenceCode$Reventless from "@reventlessdev/reventless-spec/src/semantic/ReferenceCode.res.mjs";
 import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -35,6 +36,7 @@ let consumedEventSchema = Sury.union([
     TAG: "OrderPlaced",
     orderId: s.m(OrderId$OrderingPlugin.schema),
     customerId: s.m(CustomerId$OrderingPlugin.schema),
+    reference: s.m(Sury.$option(ReferenceCode$Reventless.schema)),
     productIds: s.m(Sury.array(ProductId$CatalogSpec.schema)),
     lines: s.m(Sury.array(orderLineSchema)),
     total: s.m(Money$Reventless.schema),
@@ -75,6 +77,7 @@ let stateSchema = Sury.$schema(s => ({
   lifecycle: s.m(lifecycleSchema),
   shippingMethod: s.m(shippingMethodSchema),
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema)),
+  reference: s.m(Sury.$option(ReferenceCode$Reventless.schema)),
   firstProductName: s.m(Sury.$option(Sury.string)),
   firstProductImage: s.m(Sury.$option(catalogProductImage)),
   displayName: s.m(Sury.$option(Sury.string))

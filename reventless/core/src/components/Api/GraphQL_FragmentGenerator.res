@@ -861,12 +861,14 @@ let deriveMutationFieldFromObject = (
 ): option<string> =>
   switch SchemaType.fromSuryObject(~typeName=fieldName, variantSchema) {
   | Some(fields) =>
+    // A value the platform makes may be left out: the command path fills it.
+    let issued = Reventless.ReferenceCode.fieldNames(variantSchema)
     let args =
       fields
       ->Dict.toArray
       ->Array.map(((argName, argType)) => {
         let gqlType = fromSchemaType(
-          ~required=true,
+          ~required=!(issued->Array.includes(argName)),
           ~asInput=true,
           argType,
           collectedTypes,
@@ -900,10 +902,20 @@ let deriveMutationFieldFromObject = (
 let mutationArgTypes = (~fieldName: string, variantSchema: S.t<unknown>): option<dict<string>> =>
   SchemaType.fromSuryObject(~typeName=fieldName, variantSchema)->Option.map(fields => {
     let out = Dict.make()
+    let issued = Reventless.ReferenceCode.fieldNames(variantSchema)
     fields
     ->Dict.toArray
     ->Array.forEach(((argName, argType)) =>
-      out->Dict.set(argName, fromSchemaType(~required=true, ~asInput=true, argType, [], Set.make()))
+      out->Dict.set(
+        argName,
+        fromSchemaType(
+          ~required=!(issued->Array.includes(argName)),
+          ~asInput=true,
+          argType,
+          [],
+          Set.make(),
+        ),
+      )
     )
     out
   })

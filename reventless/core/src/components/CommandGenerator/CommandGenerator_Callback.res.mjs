@@ -13,10 +13,12 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as ReferenceCode$Reventless from "@reventlessdev/reventless-spec/src/semantic/ReferenceCode.res.mjs";
 import * as CommandOutcome$Reventless from "@reventlessdev/reventless-spec/src/components/CommandOutcome.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as Plugin_ResolverError$ReventlessCore from "../../plugin/component/Plugin_ResolverError.res.mjs";
+import * as Secrets_Node_Backend$ReventlessCore from "../../adapter/Secrets/Secrets_Node_Backend.res.mjs";
 
 let commandInterceptorHook = {
   contents: undefined
@@ -52,6 +54,38 @@ function stampOwnerFields(obj, commandSchema, command, scope, serviceName) {
   }
 }
 
+function stampIssuedFields(obj, commandSchema, command, scope, secrets) {
+  ReferenceCode$Reventless.variantFieldNames(commandSchema, command).forEach(field => {
+    let match = obj[field];
+    let keepsSent;
+    let exit = 0;
+    if (typeof scope !== "object") {
+      exit = 1;
+    } else {
+      switch (scope.TAG) {
+        case "Elevated" :
+          exit = 1;
+          break;
+        case "Owned" :
+        case "Unidentified" :
+          keepsSent = false;
+          break;
+      }
+    }
+    if (exit === 1) {
+      keepsSent = typeof match === "string" ? match.trim() !== "" : false;
+    }
+    if (keepsSent) {
+      return;
+    }
+    let raw = secrets.randomToken(ReferenceCode$Reventless.length, "Readable");
+    if (raw.TAG !== "Ok") {
+      return Stdlib_JsError.throwWithMessage(command + `.` + field + ` needs a new code, but ` + raw._0._0);
+    }
+    obj[field] = ReferenceCode$Reventless.grouped(raw._0);
+  });
+}
+
 function dropNullArguments(obj) {
   Object.keys(obj).forEach(key => {
     let match = obj[key];
@@ -61,8 +95,9 @@ function dropNullArguments(obj) {
   });
 }
 
-function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParamsOpt, partitionTag) {
+function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParamsOpt, partitionTag, secretsOpt) {
   let stripIdFromParams = stripIdFromParamsOpt !== undefined ? stripIdFromParamsOpt : true;
+  let secrets = secretsOpt !== undefined ? secretsOpt : Secrets_Node_Backend$ReventlessCore.provider;
   let refusedBeforeHandler = (meta, reason, access) => {
     Effect.runSync(EffectLogger$ReventlessCore.logWarn(`CommandGenerator(` + serviceName + `)`, undefined, EffectLogger$ReventlessCore.idsOf(undefined, undefined, meta), `refused before its handler: ` + reason));
     if (access) {
@@ -106,6 +141,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
         }
         throw e;
       }
+      stampIssuedFields(obj, commandSchema, payload.command, scope, secrets);
       params = Object.entries(obj);
     } else {
       let reason = "Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>");
@@ -196,7 +232,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
 
 function Make(Spec) {
   return AggregateSpec => {
-    let generateCommand = makeGenerateCommand(Spec.publishJsons, Spec.publishJsonsAndWait, AggregateSpec.name, AggregateSpec.commandSchema, "Aggregate", undefined, undefined);
+    let generateCommand = makeGenerateCommand(Spec.publishJsons, Spec.publishJsonsAndWait, AggregateSpec.name, AggregateSpec.commandSchema, "Aggregate", undefined, undefined, undefined);
     return {
       generateCommand: generateCommand
     };
@@ -208,6 +244,7 @@ export {
   registerCommandInterceptor,
   clearCommandInterceptor,
   stampOwnerFields,
+  stampIssuedFields,
   dropNullArguments,
   makeGenerateCommand,
   Make,

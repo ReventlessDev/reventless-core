@@ -102,6 +102,7 @@ let decodesString: array<(string, string => bool)> = [
   ("Phone", raw => acceptsString(raw, Phone.schema, ~fromString=Phone.fromString)),
   ("Url", raw => acceptsString(raw, Url.schema, ~fromString=Url.fromString)),
   ("Color", raw => acceptsString(raw, Color.schema, ~fromString=Color.fromString)),
+  ("ReferenceCode", raw => acceptsString(raw, ReferenceCode.schema)),
   ("FileRef", raw => acceptsString(raw, FileRef.schema, ~fromString=FileRef.fromString)),
   ("ImageRef", raw => acceptsString(raw, ImageRef.schema, ~fromString=ImageRef.fromString)),
   ("MemberRef", raw => acceptsString(raw, MemberRef.of_(~field="example"))),

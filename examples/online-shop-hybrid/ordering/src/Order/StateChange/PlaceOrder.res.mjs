@@ -9,6 +9,7 @@ import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as ProductId$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductId.res.mjs";
 import * as OrderId$OrderingPlugin from "../OrderId.res.mjs";
 import * as FieldDefault$Reventless from "@reventlessdev/reventless-spec/src/components/FieldDefault.res.mjs";
+import * as ReferenceCode$Reventless from "@reventlessdev/reventless-spec/src/semantic/ReferenceCode.res.mjs";
 import * as CustomerId$OrderingPlugin from "../../Customer/CustomerId.res.mjs";
 import * as UploadableImage$Reventless from "@reventlessdev/reventless-spec/src/semantic/UploadableImage.res.mjs";
 
@@ -60,6 +61,7 @@ let commandSchema = Sury.$schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
   customerId: s.m(Owner$Reventless.mark(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema))),
+  reference: s.m(Sury.$option(ReferenceCode$Reventless.issued)),
   lineItems: s.m(Sury.array(lineItemSchema)),
   shippingMethod: s.m(shippingMethodSchema),
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema))
@@ -100,6 +102,7 @@ let eventSchema = Sury.$schema(s => ({
   TAG: "OrderPlaced",
   orderId: s.m(DcbTag$Reventless.mark(OrderId$OrderingPlugin.schema)),
   customerId: s.m(DcbTag$Reventless.mark(CustomerId$OrderingPlugin.schema)),
+  reference: s.m(Sury.$option(DcbTag$Reventless.markDeclared(ReferenceCode$Reventless.schema))),
   productIds: s.m(Sury.array(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema))),
   lines: s.m(Sury.array(orderLineSchema)),
   total: s.m(Money$Reventless.schema),

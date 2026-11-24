@@ -27,6 +27,8 @@ let phone = "phone";
 
 let url = "url";
 
+let referenceCode = "referenceCode";
+
 let color = "color";
 
 let Id = {
@@ -45,6 +47,7 @@ let Id = {
   phone: phone,
   url: url,
   percent: "percent",
+  referenceCode: referenceCode,
   bytes: "bytes",
   duration: "duration",
   color: color,
@@ -94,6 +97,12 @@ let brandedStrings = [
     id: color,
     hasDerivableSchema: true,
     sample: "#1e90ff"
+  },
+  {
+    moduleName: "ReferenceCode",
+    id: referenceCode,
+    hasDerivableSchema: true,
+    sample: "ABCD-EFGH-JKLM"
   },
   {
     moduleName: "FileRef",

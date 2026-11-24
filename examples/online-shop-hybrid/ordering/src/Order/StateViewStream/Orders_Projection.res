@@ -5,6 +5,7 @@ let project = ({event, meta}) =>
   | OrderPlaced({
       orderId,
       customerId,
+      ?reference,
       productIds,
       lines,
       total,
@@ -31,6 +32,7 @@ let project = ({event, meta}) =>
           // entry — the projection never appends to it by hand.
           trail: [],
           ?deliveryWindow,
+          ?reference,
           ?// Copied straight through. The event is the record of what was bought;
           // this view does not go and ask the catalog what the product is called
           // now, which is the whole point of freezing it at placement.

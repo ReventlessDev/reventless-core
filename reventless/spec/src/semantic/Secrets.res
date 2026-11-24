@@ -21,6 +21,9 @@ type alphabet =
   | Digits
   /** `A`–`Z`, `a`–`z`, `0`–`9`, `-`, `_`. Survives a URL untouched. */
   | UrlSafe
+  /** `2`–`9` and `A`–`Z` without `I` and `O`: thirty-two characters a person reads
+      off a screen or a card and types back without confusing `0`/`O` or `1`/`I`. */
+  | Readable
 
 /** The one way this fails: nothing here is a verdict about the caller. */
 type failure = Unavailable(string)
@@ -56,6 +59,7 @@ let characters = (alphabet: alphabet): string =>
   switch alphabet {
   | Digits => "0123456789"
   | UrlSafe => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+  | Readable => "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
   }
 
 /**

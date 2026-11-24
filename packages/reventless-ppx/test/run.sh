@@ -750,6 +750,24 @@ type event = Placed({@partitionTag orderId: string, @owner onBehalfOf?: string})
 type error = unit
 EOF
 
+# @issued and @dcbTag on a reference code: the command field the platform fills,
+# a command that presents the code, and the event it is found by.
+cat > "$DCB/src/StateChange/IssuedCode.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command =
+  | SignUp({@partitionTag driverId: string, @issued chargingToken: Reventless.ReferenceCode.t})
+  | Present({@partitionTag sessionId: string, chargingToken: Reventless.ReferenceCode.t})
+
+@schema
+type event =
+  | SignedUp({@partitionTag driverId: string, @dcbTag chargingToken: Reventless.ReferenceCode.t})
+
+@schema
+type error = unit
+EOF
+
 # readConsistency: @@reventless.consistency(AlwaysStrong) build-time override
 cat > "$DCB/src/StateChange/ConsistencyStrong.res" <<'EOF'
 @@reventless.spec
@@ -2408,6 +2426,14 @@ assert_js_contains "$JS" 'agentId: s.m(Owner$Reventless.string)' \
 assert_js_contains "$JS" 'onBehalfOf: s.m(Sury.$option(Owner$Reventless.string))' \
   "@owner on f?: string — marker lands inside the option wrapper"
 assert_js_not_contains "$JS" 'noDcbTag' "@owner: @noDcbTag field attr stripped"
+
+echo ""
+echo "=== Test: @issued and @dcbTag on a reference code ==="
+JS="$DCB/src/StateChange/IssuedCode.res.mjs"
+assert_js_contains "$JS" 'chargingToken: s.m(ReferenceCode$Reventless.issued)' \
+  "@issued: the issued schema on the making command's field"
+assert_js_contains "$JS" 'DcbTag$Reventless.markDeclared(ReferenceCode$Reventless.schema)' \
+  "@dcbTag on ReferenceCode.t: the tag composes onto the code's schema"
 
 echo ""
 echo "=== Test: @dcbTag(\"key\") payload form — scalar and array<string> ==="

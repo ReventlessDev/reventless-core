@@ -228,6 +228,7 @@ let uploadable_module_of_type (ct : core_type) : string option =
 let branded_string_modules = [
   "DateTime", true; "CalendarDate", true; "Email", true; "Phone", true;
   "Url", true; "Color", true; "FileRef", true; "ImageRef", true;
+  "ReferenceCode", true;
   "MemberRef", false; "StorageRef", false;
   "UploadableFile", false; "UploadableImage", false ]
 

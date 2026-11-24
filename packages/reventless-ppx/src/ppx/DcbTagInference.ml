@@ -393,6 +393,26 @@ let transform_explicit_dcb_tags ~loc (str : structure) : structure =
       | None, Some (elem, m) when not (has_s_matches_attr elem.ptyp_attributes) ->
         { (with_elem_attr ld elem (identity_tag_attr ~loc ?key:key_override identity_fn m)) with
           pld_attributes = clean }
+      (* A semantic string ([ReferenceCode.t], [Email.t]): the tag goes onto the
+         schema its type names, so the field keeps its meaning. Left alone, the
+         attribute stayed on the field and nothing was tagged. *)
+      | None, None
+        when Util.branded_string_schema_lident ld.pld_type <> None
+             && not (has_s_matches_attr ld.pld_type.ptyp_attributes) ->
+        let lid = Option.get (Util.branded_string_schema_lident ld.pld_type) in
+        let key_args = match key_override with
+          | Some k -> [ (Labelled "key", Ast_builder.Default.estring ~loc k) ]
+          | None -> []
+        in
+        { ld with
+          pld_type = { ld.pld_type with
+                       ptyp_attributes =
+                         Util.s_matches_apply ~loc
+                           (Ldot (Ldot (Lident "Reventless", "DcbTag"), identity_fn))
+                           ((Nolabel, Ast_builder.Default.pexp_ident ~loc { txt = lid; loc })
+                            :: key_args)
+                         :: ld.pld_type.ptyp_attributes };
+          pld_attributes = clean }
       | _ ->
       if is_string_type ld.pld_type
          && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then

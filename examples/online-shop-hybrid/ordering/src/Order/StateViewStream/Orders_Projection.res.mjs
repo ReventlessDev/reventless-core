@@ -23,6 +23,7 @@ function project(param) {
             lifecycle: "Placed",
             shippingMethod: event.shippingMethod,
             deliveryWindow: event.deliveryWindow,
+            reference: event.reference,
             firstProductName: event.firstProductName,
             firstProductImage: event.firstProductImage
           }

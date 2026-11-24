@@ -73,6 +73,46 @@ let stampOwnerFields = (
   }
 
 /**
+Fill every issued field (`ReferenceCode.issued`) of the command being issued with a new
+random code, in the one place every transport's payload passes through, for the
+reason `stampOwnerFields` gives.
+
+**Overwrite, not fill-if-absent**, for the same reason as the owner: a caller
+who sends a code of their choosing must get the same fresh code as one who sends
+none, or a guessable or someone else's code gets in. An exempt caller keeps a
+non-empty value it sends — example data and migrations carry codes of their own —
+and gets a new one when it sends none.
+
+The code is made here, before the handler, so it travels in the command and the
+decision stays a function of its input.
+*/
+let stampIssuedFields = (
+  obj: dict<JSON.t>,
+  ~commandSchema: S.t<unknown>,
+  ~command: string,
+  ~scope: Reventless.OwnerScope.t,
+  ~secrets: Reventless.Secrets.t,
+) =>
+  Reventless.ReferenceCode.variantFieldNames(
+    commandSchema,
+    ~variant=command,
+  )->Array.forEach(field => {
+    let keepsSent = switch (scope, obj->Dict.get(field)) {
+    | (System | Elevated(_), Some(JSON.String(sent))) => sent->String.trim != ""
+    | _ => false
+    }
+    if !keepsSent {
+      // A source that cannot draw refuses the command: a weaker code would be accepted
+      // everywhere and guessable by anyone.
+      switch secrets.randomToken(~length=Reventless.ReferenceCode.length, ~alphabet=Readable) {
+      | Ok(raw) => obj->Dict.set(field, JSON.Encode.string(Reventless.ReferenceCode.grouped(raw)))
+      | Error(Unavailable(why)) =>
+        JsError.throwWithMessage(`${command}.${field} needs a new code, but ${why}`)
+      }
+    }
+  })
+
+/**
 Drop the arguments a caller explicitly sent as null.
 
 A transport hands over exactly the arguments the caller supplied, and GraphQL
@@ -114,6 +154,9 @@ let makeGenerateCommand = (
   ~stripIdFromParams: bool=true,
   // The handling slice's partition; the envelope id is its value on the command.
   ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
+  // Where an issued field's code is drawn from. Defaults to the node source both
+  // platforms use; a test pins it with `Secrets.fixed`.
+  ~secrets: Reventless.Secrets.t=Secrets_Node_Backend.provider,
 ): CommandGenerator.commandGenerator => {
   // A command refused before its handler ran: one warning with its ids, and, when the caller
   // may not act, the outcome a handler would have reported. A payload that cannot be decoded
@@ -178,6 +221,7 @@ let makeGenerateCommand = (
             )
             JsExn.throw(e)
           }
+          obj->stampIssuedFields(~commandSchema, ~command=payload.command, ~scope, ~secrets)
           obj->Dict.toArray
         }
       | None =>

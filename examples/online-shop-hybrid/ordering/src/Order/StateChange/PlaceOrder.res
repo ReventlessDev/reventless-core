@@ -76,6 +76,11 @@ type command =
       // client sends here is ignored rather than trusted. An operator placing an
       // order on someone's behalf is exempt and keeps the value they sent.
       @owner customerId: CustomerId.t,
+      // The reference a shopper reads out when they call about the order. The
+      // platform makes it on placement and replaces anything a caller sends, so
+      // a client leaves it out. Optional only so a command written without it
+      // still reads: on the write path it is always there.
+      @issued reference?: Reventless.ReferenceCode.t,
       lineItems: array<lineItem>,
       shippingMethod: shippingMethod,
       // A requested delivery slot, chosen at checkout. An optional field — a
@@ -124,6 +129,9 @@ type event =
   | OrderPlaced({
       orderId: OrderId.t,
       customerId: CustomerId.t,
+      // The order's reference, tagged so a decision finds the order by it. Absent
+      // on orders placed before references were made.
+      @dcbTag reference?: Reventless.ReferenceCode.t,
       // Redundant against `lines`, and deliberately so. The extension point
       // decomposes this into one published `ItemOrdered` per product and
       // `CancelOrder` folds it, so both keep working untouched — and the public

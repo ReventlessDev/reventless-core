@@ -143,7 +143,7 @@ const report = (label, bad) => {
   };
   read(file).describes.forEach(collect);
   const has = (name, text) => values.some(([n, t]) => n === name && t === text);
-  const total = "Reventless.Money.make(~amount=4500.0, ~currency=Reventless.Currency.EUR)";
+  const total = "Reventless.Money.make(~amount=45.0, ~currency=Reventless.Currency.EUR)";
   report(
     "Orders_GWT: lines [dockLine, chargerLine] and a Money.make total are read",
     [

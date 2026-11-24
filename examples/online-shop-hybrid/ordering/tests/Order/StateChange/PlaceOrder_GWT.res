@@ -48,6 +48,40 @@ describe("PlaceOrder StateChangeSlice", () => {
     )
   )
 
+  // The reference the platform made for the order travels onto the event, which
+  // is tagged by it so the order can be found by what a shopper reads out.
+  // scenario-id: 489df39f-a823-44ea-a1bf-5897b61aeb7b
+  test("a placed order records its reference", () =>
+    givenEvents([
+      CatalogProductSynced({
+        productId: p1,
+        name: fathomDock,
+        price: dockPrice,
+      }),
+    ])
+    ->whenCmd(
+      PlaceOrder({
+        orderId: o1,
+        customerId: c1,
+        reference: "7KQ3-X9MD-4TPA",
+        lineItems: [{productId: p1, quantity: 1}],
+        shippingMethod: Standard,
+      }),
+    )
+    ->thenEvent(
+      OrderPlaced({
+        orderId: o1,
+        customerId: c1,
+        reference: "7KQ3-X9MD-4TPA",
+        productIds: [p1],
+        lines: [dockLine],
+        total: dockPrice,
+        shippingMethod: Standard,
+        firstProductName: fathomDock,
+      }),
+    )
+  )
+
   // What line items are for. The quantity multiplies the shelf price the fold
   // holds, and the order's total is the sum of the lines — both computed at the
   // decision, from the log the decision already reads.

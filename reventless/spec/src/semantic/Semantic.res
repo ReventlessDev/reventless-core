@@ -101,6 +101,8 @@ module Id = {
   let phone = "phone"
   let url = "url"
   let percent = "percent"
+  // A code the platform makes and people pass on: shown, copied, typed back.
+  let referenceCode = "referenceCode"
   let bytes = "bytes"
   let duration = "duration"
   let color = "color"
@@ -183,6 +185,12 @@ let brandedStrings: array<brandedString> = [
   {moduleName: "Phone", id: Id.phone, hasDerivableSchema: true, sample: "+15555550100"},
   {moduleName: "Url", id: Id.url, hasDerivableSchema: true, sample: "https://example.com"},
   {moduleName: "Color", id: Id.color, hasDerivableSchema: true, sample: "#1e90ff"},
+  {
+    moduleName: "ReferenceCode",
+    id: Id.referenceCode,
+    hasDerivableSchema: true,
+    sample: "ABCD-EFGH-JKLM",
+  },
   {
     moduleName: "FileRef",
     id: Id.fileRef,

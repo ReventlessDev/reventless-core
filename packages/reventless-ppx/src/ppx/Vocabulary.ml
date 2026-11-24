@@ -155,6 +155,9 @@ let all : entry list =
     e ~args:Optional ~ex:"{index: false}" "owner" any_field
       "The caller a row or command belongs to: set from the caller on write, and narrowing reads."
       [ "OwnerInference"; "PiiInference"; "StateAnnotations" ];
+    e "issued" [ Field Command ]
+      "The reference code the platform makes for this command: filled on write, never sent by a caller."
+      [ "IssuedInference" ];
     e "sensitive" any_field "A value that must not be put into content a person receives."
       [ "SensitiveInference" ];
     e ~args:Optional ~ex:{|{subject: "memberId"}|} "pii" dcb_fields

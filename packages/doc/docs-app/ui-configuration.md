@@ -298,21 +298,15 @@ A reference code is a short code the platform makes, which a person reads, copie
 or types back, and which finds one record: a booking reference, a member number,
 the token a charger knows a customer by. It is not a secret: it is shown, and
 stored as it is. Type the field `Reventless.ReferenceCode.t` wherever the value
-travels, and mark the one command field the platform fills with
-`Reventless.ReferenceCode.issued`:
+travels, mark the one command field the platform fills with `@issued`, and tag
+the event field it is found by with `@dcbTag`:
 
 ```rescript
 // The command that makes it: the caller sends nothing for chargingToken
-SignUp({
-  @partitionTag driverId: string,
-  @s.matches(Reventless.ReferenceCode.issued) chargingToken: Reventless.ReferenceCode.t,
-})
+SignUp({@partitionTag driverId: string, @issued chargingToken: Reventless.ReferenceCode.t})
 
 // The event that records it, tagged so it can be found by the code
-DriverSignedUp({
-  driverId: string,
-  @dcbTag("chargingToken") chargingToken: Reventless.ReferenceCode.t,
-})
+DriverSignedUp({driverId: string, @dcbTag chargingToken: Reventless.ReferenceCode.t})
 
 // A command that presents it, and a view that shows it
 StartSession({@partitionTag sessionId: string, chargingToken: Reventless.ReferenceCode.t})
@@ -341,8 +335,10 @@ switch state.driver {
 }
 ```
 
-A presented code is trimmed and upper-cased when it is read, and otherwise taken
-as it is. On the API an issued field is an optional argument. Its JSON schema
+A code is taken exactly as it is. `@issued` is only for a field typed
+`ReferenceCode.t`; where no ppx pass runs, write the schemas by hand:
+`@s.matches(Reventless.ReferenceCode.issued)` and
+`@s.matches(Reventless.ReferenceCode.tag)`. On the API an issued field is an optional argument. Its JSON schema
 carries `x-reventless-semantic: "referenceCode"` and `x-reventless-issued: true`
 and is not required, so a generated form asks nothing for it; the UI kit shows a
 code with a copy button, and offers paste where one is asked for.

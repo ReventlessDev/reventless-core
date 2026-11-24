@@ -129,7 +129,7 @@ let deliveryWindowError = (~shippingMethod, ~deliveryWindow) =>
 
 let decide = (state, command) =>
   switch command {
-  | PlaceOrder({orderId, customerId, lineItems, shippingMethod, ?deliveryWindow}) =>
+  | PlaceOrder({orderId, customerId, ?reference, lineItems, shippingMethod, ?deliveryWindow}) =>
     if state.placedOrderIds->Array.includes(orderId) {
       Error(OrderAlreadyPlaced)
     } else if lineItems->Array.length == 0 {
@@ -176,6 +176,7 @@ let decide = (state, command) =>
                 OrderPlaced({
                   orderId,
                   customerId,
+                  ?reference,
                   productIds: lines->Array.map(line => line.productId),
                   lines,
                   total,

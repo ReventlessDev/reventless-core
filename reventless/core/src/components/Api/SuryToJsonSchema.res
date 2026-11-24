@@ -409,6 +409,7 @@ and objectRefToJsonSchema = (
   ~annotations: option<Reventless.StateAnnotations.stateAnnotationSpec>=?,
   ~optional: array<string>=[],
   ~owners: array<string>=[],
+  ~issued: array<string>=[],
   ~sensitive: array<string>=[],
   ~pii: array<(string, Reventless.Pii.marker)>=[],
   ~inputNames: bool=false,
@@ -444,6 +445,16 @@ and objectRefToJsonSchema = (
       }
     } else {
       withAnnotations
+    }
+    // A value the platform makes: a form asks nothing for it and shows it once made.
+    let withAnnotations = switch (
+      issued->Array.includes(fieldName),
+      withAnnotations->JSON.Decode.object,
+    ) {
+    | (true, Some(obj)) =>
+      obj->Dict.set("x-reventless-issued", JSON.Encode.bool(true))
+      JSON.Encode.object(obj)
+    | _ => withAnnotations
     }
     // Last, so it can read the semantic both earlier paths may have written. A
     // field whose semantic is a way of reaching a particular person is sensitive
@@ -490,7 +501,11 @@ and objectRefToJsonSchema = (
     // out *required* — a generated form refusing to submit without a field the
     // domain never asked for, which is the failure the note above describes,
     // one level down. The field's own type answers there.
-    if !(optional->Array.includes(fieldName)) && !isNullableType(fieldType) {
+    if (
+      !(optional->Array.includes(fieldName)) &&
+      !(issued->Array.includes(fieldName)) &&
+      !isNullableType(fieldType)
+    ) {
       required->Array.push(fieldName)
     }
   })
@@ -612,6 +627,7 @@ let deriveObjectSchema = (
         ~annotations?,
         ~optional=SchemaType.optionalFieldNames(schema),
         ~owners=Reventless.Owner.fieldNames(schema),
+        ~issued=Reventless.ReferenceCode.fieldNames(schema),
         ~sensitive=Reventless.Sensitive.fieldNames(schema),
         ~pii=Reventless.Pii.fieldsOf(schema),
         ~inputNames,

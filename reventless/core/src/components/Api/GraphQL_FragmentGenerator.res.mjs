@@ -11,6 +11,7 @@ import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semanti
 import * as Lifecycle$Reventless from "@reventlessdev/reventless-spec/src/types/Lifecycle.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as ReferenceCode$Reventless from "@reventlessdev/reventless-spec/src/semantic/ReferenceCode.res.mjs";
 import * as RowChange$ReventlessCore from "../../RowChange.res.mjs";
 import * as Api_Naming$ReventlessCore from "./Api_Naming.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
@@ -620,9 +621,11 @@ function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, var
   if (fields === undefined) {
     return;
   }
+  let issued = ReferenceCode$Reventless.fieldNames(variantSchema);
   let args = Object.entries(fields).map(param => {
-    let gqlType = fromSchemaType(true, true, param[1], collectedTypes, seenTypes);
-    return param[0] + `: ` + gqlType;
+    let argName = param[0];
+    let gqlType = fromSchemaType(!issued.includes(argName), true, param[1], collectedTypes, seenTypes);
+    return argName + `: ` + gqlType;
   }).join(", ");
   let argsPart = args.length > 0 ? `(` + args + `)` : "";
   return `  ` + fieldName + argsPart + `: CommandResult!`;
@@ -631,8 +634,10 @@ function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, var
 function mutationArgTypes(fieldName, variantSchema) {
   return Stdlib_Option.map(SchemaType$ReventlessCore.fromSuryObject(fieldName, variantSchema), fields => {
     let out = {};
+    let issued = ReferenceCode$Reventless.fieldNames(variantSchema);
     Object.entries(fields).forEach(param => {
-      out[param[0]] = fromSchemaType(true, true, param[1], [], new Set());
+      let argName = param[0];
+      out[argName] = fromSchemaType(!issued.includes(argName), true, param[1], [], new Set());
     });
     return out;
   });

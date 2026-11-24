@@ -411,7 +411,7 @@ function Make(DcbEventLogStorage) {
             if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
               return;
             }
-            let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false, DcbTag$Reventless.slicePartitionTag(boundaryPartition, S.Spec.name));
+            let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false, DcbTag$Reventless.slicePartitionTag(boundaryPartition, S.Spec.name), undefined);
             Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
           });
         });
@@ -422,7 +422,7 @@ function Make(DcbEventLogStorage) {
               if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
                 return;
               }
-              let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(asyncOps.publishJsons, asyncOps.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false, DcbTag$Reventless.slicePartitionTag(boundaryPartition, S.Spec.name));
+              let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(asyncOps.publishJsons, asyncOps.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false, DcbTag$Reventless.slicePartitionTag(boundaryPartition, S.Spec.name), undefined);
               Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
             });
           });
@@ -552,7 +552,7 @@ function Make(DcbEventLogStorage) {
         }
       });
       let dcbGenerateCommandOutput = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
-        let make = (commandSchema, partitionTag) => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, name, commandSchema, "StateChangeSlice", false, partitionTag);
+        let make = (commandSchema, partitionTag) => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, name, commandSchema, "StateChangeSlice", false, partitionTag, undefined);
         let byTag$1 = {};
         Object.entries(byTag).forEach(param => {
           let match = param[1];

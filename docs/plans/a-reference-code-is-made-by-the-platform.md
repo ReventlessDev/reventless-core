@@ -1,9 +1,21 @@
 # Plan: a reference code is made by the platform, shown, and found by its value
 
-> **Status:** 📝 Planned, 2026-11-24. A first cut is in the working tree, not committed: a field
-> marker named `Generated`, a stamp on the command path that draws from `Secrets`, an optional
-> mutation argument and `x-reventless-generated` in the JSON Schema. [RCC1](#4-steps) renames and
-> splits it; nothing of it is released.
+> **Status:** 🔨 In progress, 2026-11-24: [RCC1 to RCC8](#4-steps) being built, not committed.
+> Where the build differs from the steps:
+> - the type takes any text exactly as it is; it does not trim or upper-case
+>   ([RCCD7](#3-decisions)), since a sury transform hides a schema's shape from the JSON Schema and
+>   the API, and the kit's Paste trims;
+> - the semantic is a branded string (`Semantic.brandedStrings`, and the ppx's copy of that list),
+>   not a value type, since its value is a plain string;
+> - the spec writes `@issued` and `@dcbTag` on a `ReferenceCode.t` field ([RCC8](#4-steps)); the
+>   schemas behind them are `ReferenceCode.issued` and `ReferenceCode.tag`.
+> - [RCC4](#4-steps) is pinned by the spec's `ReferenceCodeTest` (a tagged field is a tag keyed by
+>   its name) and the ppx's fixture, not by a GWT of a presenting command: the shop has none;
+> - [RCC7](#4-steps): the shop's `PlaceOrder` has `@issued reference?`, `OrderPlaced` carries it
+>   with `@dcbTag`, and the orders view shows it; optional, so earlier events, tests and seed data
+>   stay valid, while the write path always fills it. A scenario pins the event;
+> - the stamp's tests are `ReferenceCodeStampingTest`, with the JSON Schema's two keys; the ppx's
+>   vocabulary lists `issued`.
 >
 > **Questions and short answers:**
 >
@@ -89,7 +101,7 @@ place on the command path, and the `Secrets` port as the source of randomness.
 | **RCCD4** | The name is `ReferenceCode` | `Token` means secret material in `Secrets` and a credential in authentication; a booking reference is the closest thing everyone knows |
 | **RCCD5** | The code is drawn from the `Secrets` port with a new alphabet, `Readable`; a source that cannot draw refuses the command | The port already has adapters per platform and a fixed one for tests; a weaker fallback would be accepted everywhere |
 | **RCCD6** | A made code is twelve characters of `Readable` (digits and capitals without `0`, `O`, `1`, `I`) in groups of four, `7KQ3-X9MD-4TPA`: 60 bits | Short enough to read out and type, and no character looks like another |
-| **RCCD7** | The type accepts any text, trimmed and upper-cased | Codes from example data, a migration or another system keep their own shape |
+| **RCCD7** | The type accepts any text, exactly as it is | Codes from example data, a migration or another system keep their own shape |
 
 ## 4. Steps
 
@@ -102,6 +114,7 @@ place on the command path, and the `Secrets` port as the source of randomness.
 | RCC5 | The API lets a caller leave an issued field out | S |
 | RCC6 | The docs: how to use it | S |
 | RCC7 | An open example uses it | S |
+| RCC8 | The ppx: `@issued`, and `@dcbTag` on a field typed by a semantic string | S–M |
 
 **RCC1. The first cut renamed.** The working tree's `spec/src/components/Generated.res` becomes
 `spec/src/semantic/ReferenceCode.res`, beside the other semantic types. Its marker functions
@@ -115,9 +128,9 @@ gains its entry (a string), so a tool that writes a scenario's value knows how.
 
 ```rescript
 // The command that makes it
-SignUp({@partitionTag driverId: string, @s.matches(Reventless.ReferenceCode.issued) chargingToken: Reventless.ReferenceCode.t})
+SignUp({@partitionTag driverId: string, @issued chargingToken: Reventless.ReferenceCode.t})
 // The event that records it, and the command that presents it
-DriverSignedUp({driverId: string, @dcbTag("chargingToken") chargingToken: Reventless.ReferenceCode.t})
+DriverSignedUp({driverId: string, @dcbTag chargingToken: Reventless.ReferenceCode.t})
 StartSession({@partitionTag sessionId: string, chargingToken: Reventless.ReferenceCode.t})
 ```
 
@@ -147,6 +160,19 @@ finding a record by it. `ReferenceCode` joins the list of semantic types there.
 sees and reads out, and customer service finds the order by it
 ([RCCQ5](#5-open-questions)).
 
+**RCC8. The ppx writes the markers.** A spec says `@issued chargingToken:
+Reventless.ReferenceCode.t` on the making command, and `@dcbTag chargingToken:
+Reventless.ReferenceCode.t` on the event it is found by:
+- **`@issued`** becomes `@s.matches(Reventless.ReferenceCode.issued)`. Like `@owner` it runs after
+  the tag passes and wraps a schema the field already has (`ReferenceCode.markIssued(<schema>)`);
+  on a field not typed `ReferenceCode.t` it is a compile error.
+- **`@dcbTag` on a field typed by a semantic string** (`ReferenceCode.t`, `Email.t` and the others
+  with a schema named by convention) puts the tag onto that schema,
+  `DcbTag.markDeclared(Reventless.ReferenceCode.schema)`, as it does onto an identity's. Before
+  this, such a field kept the attribute and was not tagged, with no error.
+
+The ppx's test fixtures pin both. The ppx is released in step with core, as for every pass.
+
 **Tests.** `ReferenceCodeTest` (spec): the schema trims and upper-cases, the markers are found on
 a variant and through an optional field. `ReferenceCodeStampingTest` (core, from the first cut's
 `GeneratedStampingTest`): an omitted field filled, a sent one replaced, an anonymous caller's
@@ -159,9 +185,9 @@ The GWT example of [RCC4](#4-steps).
 
 Numbered **RCCQ1 to RCCQ5**, each with a recommendation.
 
-**RCCQ1. Should the ppx get a shorthand `@issued`, as `@owner` has?** **Recommendation: not
-now.** `@s.matches(Reventless.ReferenceCode.issued)` is one line, and a shorthand means a ppx
-release in step. Revisit when a second app writes it, as `@owner` came after `Owner.string`.
+**RCCQ1. Should the ppx get a shorthand `@issued`, as `@owner` has?** **Settled 2026-11-24: yes**,
+with `@dcbTag` on a semantic string ([RCC8](#4-steps)). Every app with a code writes both, and
+`@dcbTag` on such a field was silently ignored before.
 
 **RCCQ2. Should `makeGenerateCommand` be handed the platform's `Capabilities.secrets`?** Six
 places construct it. **Recommendation: not yet**: default to the node adapter, which both

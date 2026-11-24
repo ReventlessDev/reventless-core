@@ -35,6 +35,7 @@ type consumedEvent =
   | OrderPlaced({
       orderId: OrderId.t,
       customerId: CustomerId.t,
+      reference?: Reventless.ReferenceCode.t,
       productIds: array<CatalogSpec.ProductId.t>,
       lines: array<orderLine>,
       total: Reventless.Money.t,
@@ -91,6 +92,9 @@ type state = {
   // The requested slot as one declared span, so a scheduler lays a bar out from
   // it directly instead of guessing the pair from field names.
   deliveryWindow?: Reventless.DateRange.t,
+  // The reference a shopper reads out, as the platform made it at placement.
+  // Absent on orders placed before references were made.
+  reference?: Reventless.ReferenceCode.t,
   // Carried on the event rather than read from the catalog — see `PlaceOrder`.
   // Absent on orders placed before it was recorded.
   firstProductName?: string,

@@ -289,6 +289,7 @@ function decide(state, command) {
         TAG: "OrderPlaced",
         orderId: orderId,
         customerId: command.customerId,
+        reference: command.reference,
         productIds: lines.map(line => line.productId),
         lines: lines,
         total: match$2._0,
