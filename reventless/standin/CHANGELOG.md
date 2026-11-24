@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.7 (2026-11-24)
+
+### Features
+
+* **standin:** a send keeps why its door refused it ([bea6856](https://github.com/ReventlessDev/reventless-core/commit/bea6856b594c8019263c44b6918334a3b1d9a7cc))
+
+
 # 1.0.0-alpha.6 (2026-11-23)
 
 ### Bug Fixes

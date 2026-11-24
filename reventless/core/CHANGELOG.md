@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.354 (2026-11-24)
+
+### Features
+
+* **spec:** a reference code is made by the platform and found by its value ([41c8e83](https://github.com/ReventlessDev/reventless-core/commit/41c8e83b507e9cd5222394472cfee360d836a49b))
+
+
 # 3.0.0-alpha.353 (2026-11-23)
 
 ### Features
