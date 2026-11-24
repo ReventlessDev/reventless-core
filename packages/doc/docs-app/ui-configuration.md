@@ -216,7 +216,7 @@ placedAt: @s.matches(Reventless.DateTime.string) string,  // calendar / timeline
 
 Available in `Reventless.*`: `Money`, `Currency`, `GeoPoint`, `DateRange`,
 `DateTime`, `Duration`, `Bytes`, `Color`, `Email`, `Phone`, `Percent`, `Url`,
-`StorageRef`, `Offload`, `Energy`, `Power`, `Quantity`, `PricePer`.
+`StorageRef`, `Offload`, `Energy`, `Power`, `Quantity`, `PricePer`, `ReferenceCode`.
 
 Why this beats a name-based guess: `GeoPoint.t` says *one declared point*, so the
 view drops a pin per row rather than hunting for a `lat`/`lng` pair among the
@@ -291,6 +291,64 @@ currency's minor unit, half away from zero. 12.4 kWh at 39 ct per kWh is 4.84 â‚
 and the same energy at 39,000 ct per MWh gives the same amount. A price per kW
 charged with energy is refused. Retyping a `price: float` as a price per unit
 changes what is stored, as retyping it as `Money.t` does.
+
+#### A reference code
+
+A reference code is a short code the platform makes, which a person reads, copies
+or types back, and which finds one record: a booking reference, a member number,
+the token a charger knows a customer by. It is not a secret: it is shown, and
+stored as it is. Type the field `Reventless.ReferenceCode.t` wherever the value
+travels, and mark the one command field the platform fills with
+`Reventless.ReferenceCode.issued`:
+
+```rescript
+// The command that makes it: the caller sends nothing for chargingToken
+SignUp({
+  @partitionTag driverId: string,
+  @s.matches(Reventless.ReferenceCode.issued) chargingToken: Reventless.ReferenceCode.t,
+})
+
+// The event that records it, tagged so it can be found by the code
+DriverSignedUp({
+  driverId: string,
+  @dcbTag("chargingToken") chargingToken: Reventless.ReferenceCode.t,
+})
+
+// A command that presents it, and a view that shows it
+StartSession({@partitionTag sessionId: string, chargingToken: Reventless.ReferenceCode.t})
+type driver = {driverId: string, chargingToken: Reventless.ReferenceCode.t}
+```
+
+**Where the code is made.** On the command path, before the handler runs, from
+the platform's `Secrets` source: twelve characters without look-alikes, in
+groups of four (`7KQ3-X9MD-4TPA`). The command carries it, the decision sees a
+value like any other, and the event records it, so a replay gives the same code.
+A source that cannot draw refuses the command rather than make a weaker code.
+
+**Who may send one.** A value a caller sends for an issued field is replaced, so
+nobody picks a guessable code or someone else's. An exempt caller, the platform's
+own traffic or an operator, keeps a code it sends, which is how example data and
+migrations carry their own; when it sends none, one is made.
+
+**Finding a record by it.** The tag on the issuing event lets the decision of a
+command that presents a code read that event, and refuse a code it does not find:
+
+```rescript
+// decide for StartSession, given the events tagged with the presented code
+switch state.driver {
+| Some(driverId) => Ok([SessionStarted({sessionId, driverId})])
+| None => Error(UnknownChargingToken)
+}
+```
+
+A presented code is trimmed and upper-cased when it is read, and otherwise taken
+as it is. On the API an issued field is an optional argument. Its JSON schema
+carries `x-reventless-semantic: "referenceCode"` and `x-reventless-issued: true`
+and is not required, so a generated form asks nothing for it; the UI kit shows a
+code with a copy button, and offers paste where one is asked for.
+
+A code that proves something, such as a confirmation code sent by e-mail, is a
+secret and not a reference code: hash it with `Secrets.hash` and compare digests.
 
 **`@semantic("id")`** says the same thing about a field whose type cannot. Reach
 for it when you are not in a position to change the type; the vocabulary is the
