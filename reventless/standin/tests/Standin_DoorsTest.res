@@ -46,3 +46,16 @@ describe("Standin.Doors:", () => {
     expect(Standin.Doors.parse(file, ~base="http://h")->Result.isError)->toBe(true)
   })
 })
+
+// Why a door refused a post, as its answer says: the refusal's name, kept beside the status so
+// what shows the sends can say it.
+describe("Standin.Runtime.refusalOf", () => {
+  testSync("a refusal's name, nothing for a post taken, the answer itself when it is no JSON", () =>
+    expect((
+      Standin.Runtime.refusalOf(~status=422, `{"requestId":"r","error":"ChargerNotUnderSite"}`),
+      Standin.Runtime.refusalOf(~status=200, `{"requestId":"r","commandCount":1}`),
+      Standin.Runtime.refusalOf(~status=0, "unreachable"),
+      Standin.Runtime.refusalOf(~status=500, "Bad gateway"),
+    ))->toEqual((Some("ChargerNotUnderSite"), None, Some("unreachable"), Some("Bad gateway")))
+  )
+})

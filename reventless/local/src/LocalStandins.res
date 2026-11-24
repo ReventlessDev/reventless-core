@@ -142,14 +142,17 @@ let ratesJson = (r: Standin.Kind.rates): JSON.t =>
 
 let sentJson = (s: Standin.Runtime.sent): JSON.t =>
   JSON.Encode.object(
-    Dict.fromArray([
-      ("kind", str(s.kind)),
-      ("id", str(s.id)),
-      ("slice", str(s.slice)),
-      ("status", JSON.Encode.int(s.status)),
-      ("at", str(s.at)),
-      ("body", s.body),
-    ]),
+    Dict.fromArray(
+      [
+        ("kind", str(s.kind)),
+        ("id", str(s.id)),
+        ("slice", str(s.slice)),
+        ("status", JSON.Encode.int(s.status)),
+        ("at", str(s.at)),
+        ("body", s.body),
+        ...s.error->Option.mapOr([], e => [("error", str(e))]),
+      ],
+    ),
   )
 
 /** Every kind with its twins and their state, its rates and whether it runs; the last sends. */

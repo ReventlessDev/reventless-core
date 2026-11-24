@@ -8,6 +8,32 @@ import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/
 import * as Seed_Commands$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Commands.res.mjs";
 import * as Standin_Doors$ReventlessStandin from "./Standin_Doors.res.mjs";
 
+function refusalOf(status, body) {
+  if (status >= 200 && status < 300) {
+    return;
+  }
+  if (status === 0) {
+    return body;
+  }
+  let d;
+  try {
+    d = JSON.parse(body);
+  } catch (exn) {
+    if (body === "") {
+      return;
+    } else {
+      return body;
+    }
+  }
+  if (typeof d !== "object" || d === null || Array.isArray(d)) {
+    return;
+  }
+  let match = d["error"];
+  if (typeof match === "string" && match !== "") {
+    return match;
+  }
+}
+
 function make(client, doors, commands, kinds, speedOpt, seedOpt, refreshMsOpt, onSentOpt, param) {
   let speed = speedOpt !== undefined ? speedOpt : 1;
   let seed = seedOpt !== undefined ? seedOpt : 1;
@@ -74,13 +100,15 @@ function send(r, collectOpt) {
           let record_body = send.body;
           let record_status = answer.status;
           let record_at = new Date(now).toISOString();
+          let record_error = refusalOf(answer.status, answer.body);
           let record = {
             kind: kind,
             id: id,
             slice: record_slice,
             body: record_body,
             status: record_status,
-            at: record_at
+            at: record_at,
+            error: record_error
           };
           r.recent = r.recent.concat([record]).slice(-200);
           r.onSent(record);
@@ -268,6 +296,7 @@ function recent(r) {
 let keep = 200;
 
 export {
+  refusalOf,
   keep,
   make,
   check,

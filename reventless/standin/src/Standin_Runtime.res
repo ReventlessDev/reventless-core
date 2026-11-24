@@ -5,8 +5,36 @@
 
 open ReventlessSeed
 
-/** One post through a door, as the door answered it. */
-type sent = {kind: string, id: string, slice: string, body: JSON.t, status: int, at: string}
+/** One post through a door, as the door answered it: its status, and why it was refused when
+    the door said (`ChargerNotUnderSite`). */
+type sent = {
+  kind: string,
+  id: string,
+  slice: string,
+  body: JSON.t,
+  status: int,
+  at: string,
+  error?: string,
+}
+
+/** Why a door refused a post, as its answer says (`{"error": "ChargerNotUnderSite"}`); none for
+    a post it took, or an answer that says nothing. */
+let refusalOf = (~status: int, body: string): option<string> =>
+  if status >= 200 && status < 300 {
+    None
+  } else if status == 0 {
+    Some(body)
+  } else {
+    switch JSON.parseOrThrow(body) {
+    | Object(d) =>
+      switch d->Dict.get("error") {
+      | Some(String(e)) if e != "" => Some(e)
+      | _ => None
+      }
+    | _ => None
+    | exception _ => body == "" ? None : Some(body)
+    }
+  }
 
 type t = {
   client: Seed.Client.t,
@@ -93,6 +121,7 @@ let send = (r: t, ~collect: sent => unit=_ => ()): Standin_Kind.sendTo =>
             body: send.body,
             status: answer.status,
             at: Date.fromTime(now)->Date.toISOString,
+            error: ?refusalOf(~status=answer.status, answer.body),
           }
           r.recent = r.recent->Array.concat([record])->Array.slice(~start=-keep)
           r.onSent(record)
