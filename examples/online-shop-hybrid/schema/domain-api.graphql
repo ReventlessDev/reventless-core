@@ -490,7 +490,7 @@ type Mutation {
   Ordering_Customer_UpdateAddress(address: String!, id: ID!): CommandResult!
   Ordering_Customer_UpdateEmail(email: String!, id: ID!): CommandResult!
   Ordering_EmailVerificationChallenges(customerId: ID!, email: String!, issuedAt: String!, proofHash: String!, purpose: String!): CommandResult!
-  Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, lineItems: [Ordering_PlaceOrderLineItems!]!, orderId: ID!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
+  Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, lineItems: [Ordering_PlaceOrderLineItems!]!, orderId: ID!, reference: String, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
   Ordering_RelistSyncedProduct(productId: ID!): CommandResult!
   Ordering_ShipOrder(orderId: ID!): CommandResult!
   Ordering_Subscribe(category: Ordering_SubscribeCategory!, channel: Ordering_SubscribeChannel!, recipientId: ID!): CommandResult!
@@ -1163,6 +1163,7 @@ type Ordering_Order implements Node {
   orderId: ID!
   placedAt: String!
   productIds: [ID!]!
+  reference: String
   shippingMethod: Ordering_OrderShippingMethod!
   total: Money!
   trail: [Ordering_OrderTrail!]!
