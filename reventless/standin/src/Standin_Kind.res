@@ -103,7 +103,9 @@ type t = {
   // gone; the ids added and removed.
   sync: (~seed: int, array<(string, JSON.t)>) => (array<string>, array<string>),
   // Runs a timer for every twin, each twin's sends in order.
-  fire: (~timer: string, ~now: Date.t, sendTo) => promise<unit>,
+  // Runs one timer for every twin; `elapsedMs`, the simulated time since it last ran, is its
+  // interval unless given (none at the start).
+  fire: (~timer: string, ~now: Date.t, ~elapsedMs: float=?, sendTo) => promise<unit>,
   byHand: (
     ~id: string,
     ~message: string,
@@ -247,7 +249,7 @@ let erase = (
       )
       (added, removed)
     },
-    fire: async (~timer, ~now, sendTo) =>
+    fire: async (~timer, ~now, ~elapsedMs=?, sendTo) =>
       switch timers->Array.find(t => t.name == timer) {
       | None => ()
       | Some(t) =>
@@ -259,7 +261,7 @@ let erase = (
             let step = t.run(
               ~id,
               twin.state,
-              ~elapsedMs=t.everyMs,
+              ~elapsedMs=elapsedMs->Option.getOr(t.everyMs),
               ~random=twin.random,
               ~now=drifted(now, ~driftMs=twin.driftMs),
             )

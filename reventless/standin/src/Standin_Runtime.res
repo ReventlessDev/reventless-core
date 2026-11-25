@@ -165,11 +165,20 @@ let refresh = async (r: t): unit => {
   let _ = await Promise.all(reads)
 }
 
-/** Starts every kind's timers, at the run's speed, after a first read of the views. */
+/** Starts every kind's timers, at the run's speed, after a first read of the views. Each runs once
+    at once, with no time elapsed, as a device reports when it starts: a heartbeat every quarter
+    of an hour is not first heard a quarter of an hour after the start. */
 let start = async (r: t): unit =>
   if !r.running {
     r.running = true
     await refresh(r)
+    r.kinds->Array.forEach(kind =>
+      if !(r.off->Array.includes(kind.name)) {
+        kind.timers->Array.forEach(((timer, _)) =>
+          kind.fire(~timer, ~now=Date.make(), ~elapsedMs=0., send(r))->ignore
+        )
+      }
+    )
     let timers = r.kinds->Array.flatMap(kind =>
       kind.timers->Array.map(((timer, everyMs)) =>
         NodeTimers.setInterval(

@@ -135,14 +135,57 @@ describe("Standin.Runtime, against the fixture app:", () => {
         "bay-2",
         "bay-3",
       ])
-      // A minute's energy at the twin's power, for every timed reading.
+      // A minute's energy at the twin's power, for every timed reading. Bay 1 and bay 2 were
+      // there at the start, and each read its meter then, with no time elapsed: no energy.
       rows->Array.forEach(((id, readings, energyWh, powerW)) => {
-        let timed = id == "bay-1" ? readings -. 1. : readings
+        let atStart = id == "bay-1" || id == "bay-2" ? 1. : 0.
+        let timed = (id == "bay-1" ? readings -. 1. : readings) -. atStart
         let expected = timed *. powerW /. 60. +. (id == "bay-1" ? 1. : 0.)
         expect(Math.abs(energyWh -. expected) < 0.01)->toBe(true)
       })
     },
     60_000,
+  )
+
+  // At real speed a minute is a minute: each of the three chargers reads its meter as the runtime starts, as a
+  // device reports when it starts, and not first a minute later.
+  testPromiseWithTimeout(
+    "every timer runs once as the runtime starts, with no time elapsed",
+    async () => {
+      let charger = ChargerStandin.make()
+      charger.setRates(Standin.Kind.exact)
+      let commands = await Seed.Commands.fetch(theClient())
+      let sent = []
+      let runtime = Standin.Runtime.make(
+        ~client=theClient(),
+        ~doors=doors.contents,
+        ~commands,
+        ~kinds=[charger],
+        ~speed=1.,
+        ~seed=44,
+        ~refreshMs=60_000,
+        ~onSent=s => sent->Array.push(s),
+        (),
+      )
+      started->Array.push(runtime)
+      await runtime->Standin.Runtime.start
+      await waitFor(
+        async () => sent->Array.length >= 3,
+        ~until=Date.now() +. 10_000.,
+        ~what="a reading from each charger at the start",
+      )
+      await runtime->Standin.Runtime.stop
+      expect((
+        sent->Array.map(s => s.id)->Array.toSorted(String.compare),
+        sent->Array.every(s =>
+          switch s.body->Seed.Commands.get("energyWh") {
+          | Some(Number(wh)) => wh == 0.
+          | _ => false
+          }
+        ),
+      ))->toEqual((["bay-1", "bay-2", "bay-3"], true))
+    },
+    30_000,
   )
 
   testPromiseWithTimeout(

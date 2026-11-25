@@ -132,7 +132,7 @@ function erase(name, view, init, timers, messages, told, describe) {
         removed
       ];
     },
-    fire: async (timer, now, sendTo) => {
+    fire: async (timer, now, elapsedMs, sendTo) => {
       let t = timers.find(t => t.name === timer);
       if (t === undefined) {
         return;
@@ -140,7 +140,7 @@ function erase(name, view, init, timers, messages, told, describe) {
       let runs = Object.entries(twins).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => {
         let twin = param[1];
         let id = param[0];
-        let step = t.run(id, twin.state, t.everyMs, twin.random, drifted(now, twin.driftMs));
+        let step = t.run(id, twin.state, Stdlib_Option.getOr(elapsedMs, t.everyMs), twin.random, drifted(now, twin.driftMs));
         twin.state = step.state;
         return deliver(twin, id, misbehave(twin, step.sends), sendTo);
       });

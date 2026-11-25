@@ -170,11 +170,19 @@ async function start(r) {
   }
   r.running = true;
   await refresh(r);
+  r.kinds.forEach(kind => {
+    if (!r.off.includes(kind.name)) {
+      kind.timers.forEach(param => {
+        kind.fire(param[0], new Date(), 0, send(r, undefined));
+      });
+      return;
+    }
+  });
   let timers = r.kinds.flatMap(kind => kind.timers.map(param => {
     let timer = param[0];
     return Nodetimers.setInterval(() => {
       if (r.running && !r.off.includes(kind.name)) {
-        kind.fire(timer, new Date(), send(r, undefined));
+        kind.fire(timer, new Date(), undefined, send(r, undefined));
         return;
       }
     }, Math.max(Seed_Pace$ReventlessSeed.realMs(r.speed, param[1]), 1));
