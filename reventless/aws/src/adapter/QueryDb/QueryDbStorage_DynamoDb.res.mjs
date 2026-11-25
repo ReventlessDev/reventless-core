@@ -131,9 +131,12 @@ function make(name, indexes, subIdField, ttl, api, apiRole, owner, opts) {
   };
 }
 
+let ordering = "Keys";
+
 let gsiLimit = 20;
 
 export {
+  ordering,
   globalSecondaryIndexes,
   attributes,
   dataSourcePolicyDocument,

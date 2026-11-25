@@ -252,7 +252,11 @@ describe("keyFieldGapMessage — which gap is worth a warning", () => {
 
 describe("deriveServerCapability — inferred keys reach the SDL surface", () => {
   let capabilityFor = (~entityName, schema) =>
-    GraphQL_FragmentGenerator.deriveServerCapability(~entityName, schema->S.castToUnknown)
+    GraphQL_FragmentGenerator.deriveServerCapability(
+      ~ordering=Keys,
+      ~entityName,
+      schema->S.castToUnknown,
+    )
 
   testSync("an inferred key yields an eq filter and a sort field", () => {
     let schema = S.schema(s => {"orderId": s.matches(S.string), "total": s.matches(S.float)})

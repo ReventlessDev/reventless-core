@@ -91,6 +91,9 @@ let withId = (item: JSON.t, partitionKey: string): JSON.t =>
 // Plain operation set for a read model's qdb table. Exposed separately from
 // `makeStorage` so the deployed-Lambda runtime (reventless-aws) can bind ops
 // without touching the Pulumi-shaped `storage` record.
+/** Orders a list by any field, as `ORDER BY item->>field`. */
+let ordering: ReventlessCore.QueryDb_Ordering.t = AnyField
+
 let makeOperations = (
   ~pool: PgDriver.pool,
   ~name: string,

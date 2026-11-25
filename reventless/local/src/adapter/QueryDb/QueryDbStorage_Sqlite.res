@@ -155,6 +155,9 @@ type busCallbacks = {
 // strftime; SQLite evaluates it on every row, which is fine at dev scale.
 let notExpiredClause = "(expires_at IS NULL OR expires_at > strftime('%s','now'))"
 
+/** Orders a list by any field, pushed down as `ORDER BY json_extract`. */
+let ordering: ReventlessCore.QueryDb_Ordering.t = AnyField
+
 let makeStorage = (
   ~db: SqliteDriver.t,
   ~bus: busCallbacks,

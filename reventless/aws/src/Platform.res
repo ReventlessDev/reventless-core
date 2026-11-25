@@ -216,6 +216,8 @@ module MakeWithConfig = (
     sync->Option.forEach(AggregateRuntime_Builder_Single.setConfig)
     async->Option.forEach(AggregateRuntime_Builder_Single_Async.setConfig)
   })
+  // Asked after the Postgres selection below is recorded, so admin stores answer DynamoDB's.
+  ReventlessCore.QueryDb_Ordering.set(QueryDbBackend_Ordering.forReadModel)
   Config.commandHandlerConfig.stateChanges->Option.forEach(({?sync, ?async}) =>
     PluginRuntime_Builder.setStateChangesConfig(~sync?, ~async?, ())
   )

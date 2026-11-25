@@ -103,6 +103,8 @@ enum Catalog_CategoryOrderField {
   enteredCurrent
   enteredListed
   enteredListedFirst
+  name
+  shelfStatus
   visitsArchived
   visitsListed
 }
@@ -172,6 +174,21 @@ input Catalog_ImportProductAuditFilter {
   searchPrefix: String
 }
 
+input Catalog_ImportProductAuditOrderBy {
+  direction: SortOrder!
+  field: Catalog_ImportProductAuditOrderField!
+}
+
+enum Catalog_ImportProductAuditOrderField {
+  caller
+  commandCount
+  door
+  error
+  input
+  receivedAt
+  status
+}
+
 type Catalog_ImportProductAuditRef {
   id: ID!
   image: String
@@ -236,6 +253,9 @@ input Catalog_ProductDemandOrderBy {
 }
 
 enum Catalog_ProductDemandOrderField {
+  categoryId
+  name
+  orderCount
   productId
 }
 
@@ -298,6 +318,7 @@ input Catalog_ProductOrderBy {
 
 enum Catalog_ProductOrderField {
   categoryId
+  description
   enteredArchived
   enteredArchivedFirst
   enteredCurrent
@@ -305,7 +326,9 @@ enum Catalog_ProductOrderField {
   enteredDiscontinuedFirst
   enteredListed
   enteredListedFirst
+  name
   productId
+  shelfStatus
   visitsArchived
   visitsDiscontinued
   visitsListed
@@ -554,6 +577,22 @@ type Ordering_AnnounceRecipientContactTodoItem {
   recipientId: ID!
 }
 
+input Ordering_AnnounceRecipientContactTodoOrderBy {
+  direction: SortOrder!
+  field: Ordering_AnnounceRecipientContactTodoOrderField!
+}
+
+enum Ordering_AnnounceRecipientContactTodoOrderField {
+  claimedUntil
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
+}
+
 type Ordering_AnnounceRecipientContactTodoRef {
   id: ID!
   image: String
@@ -611,6 +650,21 @@ type Ordering_AutoShipOrderTodoItem {
   orderId: ID!
 }
 
+input Ordering_AutoShipOrderTodoOrderBy {
+  direction: SortOrder!
+  field: Ordering_AutoShipOrderTodoOrderField!
+}
+
+enum Ordering_AutoShipOrderTodoOrderField {
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
+}
+
 type Ordering_AutoShipOrderTodoRef {
   id: ID!
   image: String
@@ -665,6 +719,7 @@ input Ordering_AvailableProductOrderBy {
 }
 
 enum Ordering_AvailableProductOrderField {
+  name
   productId
 }
 
@@ -709,6 +764,21 @@ input Ordering_CancelUnshippedOrderTodoFilter {
 type Ordering_CancelUnshippedOrderTodoItem {
   dueAt: Float!
   orderId: ID!
+}
+
+input Ordering_CancelUnshippedOrderTodoOrderBy {
+  direction: SortOrder!
+  field: Ordering_CancelUnshippedOrderTodoOrderField!
+}
+
+enum Ordering_CancelUnshippedOrderTodoOrderField {
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
 }
 
 type Ordering_CancelUnshippedOrderTodoRef {
@@ -804,7 +874,13 @@ input Ordering_CustomerOrderBy {
 }
 
 enum Ordering_CustomerOrderField {
+  accountStatus
+  address
   customerId
+  displayName
+  email
+  emailVerified
+  orderCount
 }
 
 type Ordering_CustomerRef {
@@ -849,6 +925,22 @@ input Ordering_GeocodeCustomerAddressTodoFilter {
 type Ordering_GeocodeCustomerAddressTodoItem {
   address: String!
   customerId: ID!
+}
+
+input Ordering_GeocodeCustomerAddressTodoOrderBy {
+  direction: SortOrder!
+  field: Ordering_GeocodeCustomerAddressTodoOrderField!
+}
+
+enum Ordering_GeocodeCustomerAddressTodoOrderField {
+  claimedUntil
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
 }
 
 type Ordering_GeocodeCustomerAddressTodoRef {
@@ -899,6 +991,18 @@ input Ordering_MarketingDigestScheduleFilter {
   searchPrefix: String
 }
 
+input Ordering_MarketingDigestScheduleOrderBy {
+  direction: SortOrder!
+  field: Ordering_MarketingDigestScheduleOrderField!
+}
+
+enum Ordering_MarketingDigestScheduleOrderField {
+  key
+  setAt
+  setBy
+  time
+}
+
 type Ordering_MarketingDigestScheduleRef {
   id: ID!
   image: String
@@ -939,6 +1043,21 @@ input Ordering_MarketingDigestTodoFilter {
 
 type Ordering_MarketingDigestTodoItem {
   recipientId: ID!
+}
+
+input Ordering_MarketingDigestTodoOrderBy {
+  direction: SortOrder!
+  field: Ordering_MarketingDigestTodoOrderField!
+}
+
+enum Ordering_MarketingDigestTodoOrderField {
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
 }
 
 type Ordering_MarketingDigestTodoRef {
@@ -1009,7 +1128,17 @@ input Ordering_NotificationDeliveryOrderBy {
 }
 
 enum Ordering_NotificationDeliveryOrderField {
+  category
+  channel
+  decidedAt
+  detail
+  origin
+  outcome
   recipientId
+  reference
+  settledAt
+  subjectRef
+  subjectType
 }
 
 enum Ordering_NotificationDeliveryOutcome {
@@ -1062,6 +1191,21 @@ type Ordering_NotificationIntakeTodoItem {
   orderId: ID!
   recipientId: ID!
   ruleId: ID!
+}
+
+input Ordering_NotificationIntakeTodoOrderBy {
+  direction: SortOrder!
+  field: Ordering_NotificationIntakeTodoOrderField!
+}
+
+enum Ordering_NotificationIntakeTodoOrderField {
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
 }
 
 type Ordering_NotificationIntakeTodoRef {
@@ -1119,6 +1263,8 @@ input Ordering_NotificationSubscriptionOrderBy {
 }
 
 enum Ordering_NotificationSubscriptionOrderField {
+  displayName
+  email
   recipientId
 }
 
@@ -1238,6 +1384,8 @@ input Ordering_OrderOrderBy {
 }
 
 enum Ordering_OrderOrderField {
+  customerId
+  displayName
   enteredCancelled
   enteredCancelledFirst
   enteredCurrent
@@ -1245,7 +1393,14 @@ enum Ordering_OrderOrderField {
   enteredPlacedFirst
   enteredShipped
   enteredShippedFirst
+  firstProductImage
+  firstProductName
+  itemCount
+  lifecycle
   orderId
+  placedAt
+  reference
+  shippingMethod
   visitsCancelled
   visitsPlaced
   visitsShipped
@@ -1370,6 +1525,22 @@ enum Ordering_SendNotificationTodoItemChannel {
   Sms
 }
 
+input Ordering_SendNotificationTodoOrderBy {
+  direction: SortOrder!
+  field: Ordering_SendNotificationTodoOrderField!
+}
+
+enum Ordering_SendNotificationTodoOrderField {
+  claimedUntil
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
+}
+
 type Ordering_SendNotificationTodoRef {
   id: ID!
   image: String
@@ -1451,6 +1622,22 @@ input Ordering_VerifyCustomerEmailTodoFilter {
 type Ordering_VerifyCustomerEmailTodoItem {
   customerId: ID!
   email: String!
+}
+
+input Ordering_VerifyCustomerEmailTodoOrderBy {
+  direction: SortOrder!
+  field: Ordering_VerifyCustomerEmailTodoOrderField!
+}
+
+enum Ordering_VerifyCustomerEmailTodoOrderField {
+  claimedUntil
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
 }
 
 type Ordering_VerifyCustomerEmailTodoRef {
@@ -1540,6 +1727,20 @@ enum Platform_PluginKind {
   PlatformInfrastructure
 }
 
+input Platform_PluginOrderBy {
+  direction: SortOrder!
+  field: Platform_PluginOrderField!
+}
+
+enum Platform_PluginOrderField {
+  apiTarget
+  eventCollector
+  kind
+  name
+  status
+  version
+}
+
 type Platform_PluginRef {
   id: ID!
   image: String
@@ -1595,6 +1796,9 @@ input Platform_UiFragmentOrderBy {
 
 enum Platform_UiFragmentOrderField {
   pluginId
+  registeredAt
+  remoteEntryUrl
+  updatedAt
 }
 
 type Platform_UiFragmentPages {
@@ -1773,6 +1977,22 @@ type Registration_CreateRegisteredPrincipalTodoItem {
   roles: [ID!]!
 }
 
+input Registration_CreateRegisteredPrincipalTodoOrderBy {
+  direction: SortOrder!
+  field: Registration_CreateRegisteredPrincipalTodoOrderField!
+}
+
+enum Registration_CreateRegisteredPrincipalTodoOrderField {
+  claimedUntil
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
+}
+
 type Registration_CreateRegisteredPrincipalTodoRef {
   id: ID!
   image: String
@@ -1856,7 +2076,9 @@ input Registration_RegistrationWindowOrderBy {
 }
 
 enum Registration_RegistrationWindowOrderField {
+  isOpen
   role
+  until
 }
 
 type Registration_RegistrationWindowRef {
@@ -1907,6 +2129,22 @@ type Registration_SendRegistrationChallengeTodoItem {
   roles: [String!]
 }
 
+input Registration_SendRegistrationChallengeTodoOrderBy {
+  direction: SortOrder!
+  field: Registration_SendRegistrationChallengeTodoOrderField!
+}
+
+enum Registration_SendRegistrationChallengeTodoOrderField {
+  claimedUntil
+  completedAt
+  createdAt
+  lastError
+  maxRetries
+  processedAt
+  retryCount
+  status
+}
+
 type Registration_SendRegistrationChallengeTodoRef {
   id: ID!
   image: String
@@ -1954,6 +2192,19 @@ input Registration_VisitorRequestCountFilter {
   ids: [ID!]
   search: String
   searchPrefix: String
+}
+
+input Registration_VisitorRequestCountOrderBy {
+  direction: SortOrder!
+  field: Registration_VisitorRequestCountOrderField!
+}
+
+enum Registration_VisitorRequestCountOrderField {
+  kind
+  refused
+  requests
+  seconds
+  startsAt
 }
 
 type Registration_VisitorRequestCountRef {

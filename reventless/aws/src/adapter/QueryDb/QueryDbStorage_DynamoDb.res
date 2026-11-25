@@ -4,6 +4,9 @@ open DynamoDb.Table
 type api = Types.AppSync.api
 type role = Types.AppSync.role
 
+/** Orders a list by its keys and its indexes only. */
+let ordering: ReventlessCore.QueryDb_Ordering.t = Keys
+
 let globalSecondaryIndexes = (indexes: array<Reventless.ReadModel.indexConfig>) =>
   indexes
   ->Array.map((indexConfig: Reventless.ReadModel.indexConfig) => {

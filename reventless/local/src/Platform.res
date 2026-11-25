@@ -214,6 +214,7 @@ module MakeWithConfig = (
       ProjectionCheckpoint.completePublished(db, msgIds)
     })
   }
+  ReventlessCore.QueryDb_Ordering.set(_ => QueryDbBackend_Ordering.forBackend(Config.backend))
 
   module Bus = LocalBus.Impl({
     let capacity = None

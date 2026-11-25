@@ -324,10 +324,13 @@ function Make(Bus) {
   };
 }
 
+let ordering = "AnyField";
+
 export {
   getSubKey,
   sortedItems,
   flattenStore,
+  ordering,
   Make,
 }
 /* effect/Stream Not a pure module */

@@ -322,6 +322,20 @@ enum Platform_PluginKind {
   PlatformInfrastructure
 }
 
+input Platform_PluginOrderBy {
+  direction: SortOrder!
+  field: Platform_PluginOrderField!
+}
+
+enum Platform_PluginOrderField {
+  apiTarget
+  eventCollector
+  kind
+  name
+  status
+  version
+}
+
 type Platform_PluginRef {
   id: ID!
   image: String
@@ -509,7 +523,7 @@ type Query {
   Platform_Metrics(plugins: [String!]): [Platform_MetricCount!]!
   Platform_Plugin(id: ID!, includeRetired: Boolean): Platform_Plugin
   Platform_PluginStructures: [Platform_PluginStructureEntry!]!
-  Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, includeRetired: Boolean, last: Int): Platform_PluginConnection!
+  Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Platform_PluginOrderBy): Platform_PluginConnection!
   Platform_PluginsByIds(ids: [String!]!, includeRetired: Boolean): [Platform_Plugin!]!
   Platform_PluginsRefs(ids: [ID!]!): [Platform_PluginRef!]!
   Platform_UIFragments: [Platform_UIFragmentEntry!]!

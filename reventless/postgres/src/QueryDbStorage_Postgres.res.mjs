@@ -40,6 +40,8 @@ let computeSubKey = QueryDbStorage_Postgres_Ops$ReventlessPostgres.computeSubKey
 
 let withId = QueryDbStorage_Postgres_Ops$ReventlessPostgres.withId;
 
+let ordering = QueryDbStorage_Postgres_Ops$ReventlessPostgres.ordering;
+
 let makeOperations = QueryDbStorage_Postgres_Ops$ReventlessPostgres.makeOperations;
 
 export {
@@ -54,6 +56,7 @@ export {
   decodeItem,
   computeSubKey,
   withId,
+  ordering,
   makeOperations,
   makeStorage,
   Make,

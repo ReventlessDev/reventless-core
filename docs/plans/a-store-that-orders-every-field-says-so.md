@@ -1,6 +1,7 @@
 # Plan: a store that orders every field says so
 
-> **Status:** Plan · not started. Written 2026-11-23.
+> **Status:** 🔨 In progress. [OES1](#4-steps) and [OES2](#4-steps) built 2026-11-25, with their part
+> of [OES5](#4-steps) (see each *As built*). Written 2026-11-23.
 >
 > **Questions and short answers:**
 >
@@ -104,12 +105,27 @@ platform answer it per read model.
 *Done when* a test reads `Keys` for a DynamoDB read model and an admin store on a Postgres
 platform, and `AnyField` for a Postgres, SQLite and in-memory one.
 
+*As built (2026-11-25):* the ordering is a value each store module declares (`ordering` beside
+its `make`), not a field of the operations record: the SDL is generated at deploy time, before
+any operations exist. The platform answers per read model through `QueryDb_Ordering.set`; on AWS
+`QueryDbBackend_Ordering.forReadModel` picks Postgres's or DynamoDB's, and locally
+`QueryDbBackend_Ordering.forBackend` picks SQLite's or the in-memory store's. A read model asked
+before a platform answers gets `Keys`.
+
 **OES2 One sort surface per store.** Waits for [OES1](#4-steps). `deriveServerCapability` takes
 the ordering and adds the fields of [OED3](#3-decisions) for `AnyField`; the SDL generator and the
 three resolvers pass it.
 *Done when* the generated SDL of a shop read model on SQLite and on Postgres lists every scalar
 field in `OrderField`, the same read model on DynamoDB lists what it lists today, and a query
 ordering by an added field is answered on each `AnyField` store.
+
+*As built (2026-11-25):* the SDL generator and the local resolver ask `QueryDb_Ordering` by the
+read model's name; the DynamoDB resolvers pass DynamoDB's ordering and the Postgres Lambda
+Postgres's. `OrderingCapabilityTest` holds both sort surfaces and the generated `OrderField`;
+the SQLite parity suite orders by an unannotated field under the derived capability. Postgres
+already ordered by whatever `orderBy` names; its own run waits for a database, with
+[OES3](#4-steps). The GraphQL goldens moved: they come from the local platform, so each
+`OrderField` there lists every plain field, and `Platform_Plugins` gained an `orderBy`.
 
 **OES3 Paging stays in order.** Waits for [OES2](#4-steps). The cursor of [OED6](#3-decisions) on
 Postgres and SQLite; in-memory already breaks ties by id and is checked to treat missing values the

@@ -260,7 +260,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // with the SDL emitted by GraphQL_FragmentGenerator at runtime.
     let capability = switch stateSchemaOpt {
     | Some(s) =>
-      ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(~entityName=name, s)
+      ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(
+        ~ordering=QueryDbStorage_DynamoDb.ordering,
+        ~entityName=name,
+        s,
+      )
     | None => ReventlessCore.GraphQL_FragmentGenerator.emptyCapability
     }
     let filterFieldNames = capability.filterFields->Array.map(f => f.name)

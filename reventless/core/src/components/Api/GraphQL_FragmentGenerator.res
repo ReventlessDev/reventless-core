@@ -511,7 +511,41 @@ let entityNameOf = (entry: ReventlessInfra.Api.querySchemaEntry): string =>
     }
   }
 
-let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): serverCapability => {
+/** A field kind whose stored value sorts as the value does. */
+let rec isOrderable = (st: SchemaType.schemaType): bool =>
+  switch st {
+  | ScalarString
+  | ScalarNumber
+  | ScalarInt
+  | ScalarBoolean
+  | EntityId
+  | DateTime
+  | CalendarDate
+  | Enum(_) => true
+  | Nullable(inner) | Semantic(_, inner) | Defaulted(_, inner) => isOrderable(inner)
+  | _ => false
+  }
+
+/** The top-level fields a store that orders any field sorts by: plain scalars, not hidden and
+    not personal, since a personal field may be stored sealed. */
+let orderableFields = (schema: S.t<unknown>): array<string> => {
+  let hidden = Reventless.StateAnnotations.getSpec(schema)->Option.mapOr([], spec => spec.hidden)
+  let personal = Reventless.Pii.fieldsOf(schema)->Array.map(((name, _)) => name)
+  SchemaType.fromSuryObject(~typeName="", schema)
+  ->Option.getOr(Dict.make())
+  ->Dict.toArray
+  ->Array.filterMap(((name, st)) =>
+    isOrderable(st) && !(hidden->Array.includes(name)) && !(personal->Array.includes(name))
+      ? Some(name)
+      : None
+  )
+}
+
+let deriveServerCapability = (
+  ~ordering: QueryDb_Ordering.t,
+  ~entityName: string,
+  schema: S.t<unknown>,
+): serverCapability => {
   let fieldTypes = SchemaType.fromSuryObject(~typeName="", schema)->Option.getOr(Dict.make())
   let scalarOf = (fieldName: string): string =>
     fieldTypes->Dict.get(fieldName)->Option.mapOr("String", scalarOfSchemaType)
@@ -617,6 +651,12 @@ let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): server
     pushFilter(field, ~range=false)
     pushSort(field)
   | None => ()
+  }
+
+  // After the annotated names, which keep their place.
+  switch ordering {
+  | AnyField => orderableFields(schema)->Array.forEach(pushSort)
+  | Keys => ()
   }
 
   let nonEmpty = a => a->Array.length > 0 ? Some(a) : None
@@ -1165,7 +1205,11 @@ let generate = (
           types->Array.push(t)
         )
       }
-      let capability = deriveServerCapability(~entityName=entityNameOf(entry), entry.stateSchema)
+      let capability = deriveServerCapability(
+        ~ordering=QueryDb_Ordering.forReadModel(entityNameOf(entry)),
+        ~entityName=entityNameOf(entry),
+        entry.stateSchema,
+      )
       let connectionFilterTypeName = entry.returnTypeName ++ "Filter"
       if !(seenTypes->Set.has(connectionFilterTypeName)) {
         seenTypes->Set.add(connectionFilterTypeName)

@@ -476,7 +476,7 @@ The `<Type>Filter` input and `<Type>OrderField` enum on every connection are bui
 | `@indexSubId("<Name>")`         | range filters scoped to the named index     | yes      | Sort key for the named `@index`.               |
 | `@scan`                         | `<field>Eq`                                 | no       | Opt-in equality without a backing index.       |
 | `@scanSort`                     | —                                           | yes      | Opt-in sortable without a backing sort key.    |
-| (no annotation)                 | not filterable                              | no       |                                                |
+| (no annotation)                 | not filterable                              | by store | Sortable where the store orders any field.      |
 
 The base filter always includes:
 
@@ -487,6 +487,8 @@ ids: [ID!]
 ```
 
 `@scan` and `@scanSort` are deliberately verbose — they enable client filtering and sorting on fields that have no backing index. On AWS DynamoDB they cost O(n); on the local platform they are free. Use them where ergonomics outweigh cost.
+
+**`<Type>OrderField` depends on the store that holds the read model.** DynamoDB orders by its keys and indexes, so there the enum lists the annotated fields above. The local platform's in-memory and SQLite stores and Postgres order by any field, so there the enum also lists every plain field of the state (text, numbers, booleans, dates, enums), after the annotated ones; lists, objects, `@hidden` fields and personal fields are left out. The SDL describes the deployment, so a client that pins it pins it per deployment.
 
 ## 8. Cross-table references and labels
 

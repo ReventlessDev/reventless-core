@@ -397,6 +397,14 @@ DynamoDB-backed adapters. The annotation *is* the signal that the read model is
 small enough, or that the cost is accepted. See
 [the GraphQL API guide](./graphql-api-guide.md) for the exact generated arguments.
 
+**What sorts depends on the store as well.** DynamoDB orders a list by its keys and
+indexes only, so there the table above is the whole sort surface. The in-memory and
+SQLite stores of the local platform, and Postgres, order by any field: on them every
+plain field of a read model sorts too (text, numbers, booleans, dates, enums), the
+annotated fields first. Lists, objects, `@hidden` fields and personal fields do not,
+since a personal field may be stored sealed. The same read model can therefore offer
+more sort fields on one deployment than on another.
+
 `@id` is usually unnecessary — the key is inferred from the component name. Reach
 for it when inference has nothing to go on:
 

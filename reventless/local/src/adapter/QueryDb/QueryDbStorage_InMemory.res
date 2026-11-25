@@ -58,6 +58,9 @@ let flattenStore = (store: dict<dict<JSON.t>>): array<JSON.t> =>
     })
   )
 
+/** Orders a list by any field. */
+let ordering: ReventlessCore.QueryDb_Ordering.t = AnyField
+
 module Make = (Bus: LocalBus.T) => {
   open ReventlessCore
 

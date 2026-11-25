@@ -147,6 +147,7 @@ let registerBinding = (
       indexes,
       ?subIdField,
       capability: ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(
+        ~ordering=ReventlessPostgres.QueryDbStorage_Postgres_Ops.ordering,
         ~entityName=entry.readModelName,
         spec.stateSchema,
       ),

@@ -67,6 +67,7 @@ import * as DeploymentProvenance$Reventless from "@reventlessdev/reventless-spec
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Platform_UiSlots$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UiSlots.res.mjs";
+import * as QueryDb_Ordering$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Ordering.res.mjs";
 import * as Upload_Presign_S3$ReventlessAws from "./adapter/Upload/Upload_Presign_S3.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
 import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
@@ -101,6 +102,7 @@ import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventles
 import * as PgQueryResolver_Builder$ReventlessAws from "./adapter/QueryDb/PgQueryResolver_Builder.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 import * as Platform_ProvidedGroups$ReventlessAws from "./Platform_ProvidedGroups.res.mjs";
+import * as QueryDbBackend_Ordering$ReventlessAws from "./adapter/QueryDb/QueryDbBackend_Ordering.res.mjs";
 import * as QueryDbStorage_DynamoDb$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDb.res.mjs";
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateView/UiFragments_Projection.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
@@ -214,6 +216,7 @@ function MakeWithConfig(Config) {
     Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
     Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
   });
+  QueryDb_Ordering$ReventlessCore.set(QueryDbBackend_Ordering$ReventlessAws.forReadModel);
   Stdlib_Option.forEach(Config.commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
   Stdlib_Option.forEach(Config.pgConnection, pg => {
     DcbBackend$ReventlessAws.set({
@@ -1857,6 +1860,7 @@ function Make($star) {
     Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
     Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
   });
+  QueryDb_Ordering$ReventlessCore.set(QueryDbBackend_Ordering$ReventlessAws.forReadModel);
   Stdlib_Option.forEach(commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
   Stdlib_Option.forEach(undefined, pg => {
     DcbBackend$ReventlessAws.set({

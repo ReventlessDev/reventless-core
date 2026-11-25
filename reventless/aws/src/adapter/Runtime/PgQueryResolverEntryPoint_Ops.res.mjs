@@ -14,6 +14,7 @@ import * as ProjectionEntryPoint_Ops$ReventlessAws from "./ProjectionEntryPoint_
 import * as QueryEnginePostgres$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/QueryEnginePostgres.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as QueryDbStorage_Postgres_Runtime$ReventlessAws from "../QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
+import * as QueryDbStorage_Postgres_Ops$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/QueryDbStorage_Postgres_Ops.res.mjs";
 
 function logDebug(prim0, prim1) {
   HandlerFactoryHelpersMjs.log.debug(prim0, prim1);
@@ -73,7 +74,7 @@ function registerBinding(pushdowns, pgConnection, entry, spec) {
     pushdowns: pushdowns,
     indexes: indexes,
     subIdField: subIdField,
-    capability: GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(entry.readModelName, spec.stateSchema),
+    capability: GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(QueryDbStorage_Postgres_Ops$ReventlessPostgres.ordering, entry.readModelName, spec.stateSchema),
     labelField: entry.labelField,
     includeIdParam: entry.includeIdParam,
     authorization: Authorization$Reventless.named(spec.authorization),

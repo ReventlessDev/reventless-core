@@ -205,6 +205,8 @@ function makeOperations(pool, name, indexes, subIdField) {
   };
 }
 
+let ordering = "AnyField";
+
 export {
   tableName,
   sanitizeIdent,
@@ -217,6 +219,7 @@ export {
   decodeItem,
   computeSubKey,
   withId,
+  ordering,
   makeOperations,
 }
 /* effect/Effect Not a pure module */

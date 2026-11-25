@@ -477,6 +477,8 @@ function Make(Bus) {
   };
 }
 
+let ordering = "AnyField";
+
 export {
   tableName,
   sanitizeIdent,
@@ -490,6 +492,7 @@ export {
   computeSubKey,
   withId,
   notExpiredClause,
+  ordering,
   makeStorage,
   Make,
 }

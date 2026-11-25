@@ -32,6 +32,7 @@ let indexes = Reventless.ReadModel.trailIndexes(
 )
 
 let capability = ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(
+  ~ordering=Keys,
   ~entityName="Orders",
   TrailQueryFixture.annotated(~trailIndex=["Placed"], ~owner=false),
 )

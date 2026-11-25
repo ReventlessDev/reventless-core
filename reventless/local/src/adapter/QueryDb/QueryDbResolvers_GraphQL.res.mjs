@@ -25,6 +25,7 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
+import * as QueryDb_Ordering$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Ordering.res.mjs";
 import * as GraphQL_CallerError$ReventlessLocal from "../GraphQL_CallerError.res.mjs";
 import * as LocalAnonymousLimit$ReventlessLocal from "../LocalAnonymousLimit.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "../DomainGraphQL_Server.res.mjs";
@@ -322,7 +323,7 @@ function Make(Bus) {
       refsResolverEntry = undefined;
     }
     let stateSchemaOpt = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name];
-    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(name, stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
+    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(QueryDb_Ordering$ReventlessCore.forReadModel(name), name, stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
     let fetchAllItems = async () => {
       let makeStream = Bus.getQueryDbStream(name);
       if (makeStream !== undefined) {

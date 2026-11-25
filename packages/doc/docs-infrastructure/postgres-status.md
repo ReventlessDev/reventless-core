@@ -26,6 +26,12 @@ and secrets, pooling, cost), see
 The engine is connection-string driven: RDS, Aurora, any managed provider, or a
 container on your laptop.
 
+A read model on Postgres sorts its list by any plain field, not only by the fields
+an annotation indexes. A sort by a field with no index reads the read model's table
+and sorts it, which is fine for the lists an admin page shows. The adapter creates
+no index for such a field yet, so a large read model sorted often by one pays that
+read each time.
+
 ## Why you might want it
 
 Two reasons, both about the write path:

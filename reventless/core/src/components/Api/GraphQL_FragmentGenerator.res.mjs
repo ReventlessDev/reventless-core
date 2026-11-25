@@ -4,6 +4,7 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
+import * as Pii$Reventless from "@reventlessdev/reventless-spec/src/components/Pii.res.mjs";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
@@ -18,6 +19,7 @@ import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 import * as SchemaWalker$ReventlessCore from "../../plugin/component/SchemaWalker.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "./GraphQL_Stitcher.res.mjs";
+import * as QueryDb_Ordering$ReventlessCore from "../QueryDb/QueryDb_Ordering.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -395,7 +397,49 @@ function entityNameOf(entry) {
   }
 }
 
-function deriveServerCapability(entityName, schema) {
+function isOrderable(_st) {
+  while (true) {
+    let st = _st;
+    if (typeof st !== "object") {
+      switch (st) {
+        case "ScalarBigInt" :
+        case "Unknown" :
+          return false;
+        default:
+          return true;
+      }
+    } else {
+      switch (st.TAG) {
+        case "Nullable" :
+          _st = st._0;
+          continue;
+        case "Semantic" :
+        case "Defaulted" :
+          _st = st._1;
+          continue;
+        case "ArrayOf" :
+        case "ObjectRef" :
+        case "TaggedUnion" :
+          return false;
+        default:
+          return true;
+      }
+    }
+  };
+}
+
+function orderableFields(schema) {
+  let hidden = Stdlib_Option.mapOr(StateAnnotations$Reventless.getSpec(schema), [], spec => spec.hidden);
+  let personal = Pii$Reventless.fieldsOf(schema).map(param => param[0]);
+  return Stdlib_Array.filterMap(Object.entries(Stdlib_Option.getOr(SchemaType$ReventlessCore.fromSuryObject("", schema), {})), param => {
+    let name = param[0];
+    if (isOrderable(param[1]) && !hidden.includes(name) && !personal.includes(name)) {
+      return name;
+    }
+  });
+}
+
+function deriveServerCapability(ordering, entityName, schema) {
   let fieldTypes = Stdlib_Option.getOr(SchemaType$ReventlessCore.fromSuryObject("", schema), {});
   let scalarOf = fieldName => Stdlib_Option.mapOr(fieldTypes[fieldName], "String", scalarOfSchemaType);
   let filterFields = [];
@@ -493,6 +537,9 @@ function deriveServerCapability(entityName, schema) {
     let field = match$3[0];
     pushFilter(field, false, undefined);
     pushSort(field);
+  }
+  if (ordering !== "Keys") {
+    orderableFields(schema).forEach(pushSort);
   }
   let nonEmpty = a => {
     if (a.length !== 0) {
@@ -775,7 +822,7 @@ function generate(mutationEntries, queryEntries) {
           types.push(t);
         });
       }
-      let capability = deriveServerCapability(entityNameOf(entry), entry.stateSchema);
+      let capability = deriveServerCapability(QueryDb_Ordering$ReventlessCore.forReadModel(entityNameOf(entry)), entityNameOf(entry), entry.stateSchema);
       let connectionFilterTypeName = entry.returnTypeName + "Filter";
       if (!seenTypes.has(connectionFilterTypeName)) {
         seenTypes.add(connectionFilterTypeName);
@@ -847,6 +894,8 @@ export {
   resolveKeyField,
   keyFieldGapMessage,
   entityNameOf,
+  isOrderable,
+  orderableFields,
   deriveServerCapability,
   validateScanSortAlignment,
   deriveConnectionFilterType,

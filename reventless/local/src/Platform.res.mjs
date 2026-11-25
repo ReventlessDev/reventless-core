@@ -62,6 +62,7 @@ import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core
 import * as LocalCheckStart$ReventlessLocal from "./LocalCheckStart.res.mjs";
 import * as LocalPluginSpec$ReventlessLocal from "./adapter/LocalPluginSpec.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as QueryDb_Ordering$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Ordering.res.mjs";
 import * as RuntimeExtension$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/RuntimeExtension/RuntimeExtension.res.mjs";
 import * as DomainMCP_Server$ReventlessLocal from "./adapter/DomainMCP_Server.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
@@ -113,6 +114,7 @@ import * as LocalDcbEventLogStorage$ReventlessLocal from "./adapter/DcbEventLog/
 import * as LocalRuntimeEnvironment$ReventlessLocal from "./adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
 import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/LocalScheduledPublisher.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
+import * as QueryDbBackend_Ordering$ReventlessLocal from "./adapter/QueryDb/QueryDbBackend_Ordering.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
@@ -206,6 +208,7 @@ function MakeWithConfig(Config) {
     BackendState$ReventlessLocal.setPostgres(match.pool);
     LocalBus$ReventlessLocal.seedEventTapSeq(match.initialCount);
   }
+  QueryDb_Ordering$ReventlessCore.set(param => QueryDbBackend_Ordering$ReventlessLocal.forBackend(Config.backend));
   let Bus = LocalBus$ReventlessLocal.Impl({
     capacity: undefined,
     silent: Config.silent
@@ -2098,6 +2101,7 @@ function Make($star) {
     BackendState$ReventlessLocal.setPostgres(backend.pool);
     LocalBus$ReventlessLocal.seedEventTapSeq(backend.initialCount);
   }
+  QueryDb_Ordering$ReventlessCore.set(param => QueryDbBackend_Ordering$ReventlessLocal.forBackend(backend));
   let Bus = LocalBus$ReventlessLocal.Impl({
     capacity: undefined,
     silent: false

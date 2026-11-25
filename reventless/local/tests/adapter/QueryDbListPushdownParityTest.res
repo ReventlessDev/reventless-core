@@ -132,7 +132,7 @@ let orderBy = (f, dir) =>
 let cur = ReventlessCore.QueryDbListQuery.encodeCursor
 
 // Assert the push-down serves this shape AND matches the spec exactly.
-let checkPushed = async (~label, ~ownerScope=?, ~retiredScope=?, args) => {
+let checkPushed = async (~label, ~capability=capability, ~ownerScope=?, ~retiredScope=?, args) => {
   let s = await build()
   let argsDict = argsOf(args)
   let expected =
@@ -214,6 +214,24 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   testPromise("orderBy name DESC", () =>
     checkPushed(~label="order-desc", [("orderBy", orderBy("name", "DESC"))])
   )
+  // No annotation names `name`; a store that orders any field offers it all the same.
+  testPromise("orderBy an unannotated field under the capability AnyField derives", () => {
+    let derived = ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(
+      ~ordering=QueryDbStorage_Sqlite.ordering,
+      ~entityName="Items",
+      S.schema(
+        s =>
+          {
+            "id": s.matches(S.string),
+            "status": s.matches(S.string),
+            "name": s.matches(S.string),
+            "qty": s.matches(S.int),
+          },
+      )->S.castToUnknown,
+    )
+    expect(derived.sortFields)->toEqual(["id", "status", "name", "qty"])
+    checkPushed(~label="any-field", ~capability=derived, [("orderBy", orderBy("name", "ASC"))])
+  })
   testPromise("orderBy name DESC + first:2 + after", () =>
     checkPushed(
       ~label="order-desc-after",

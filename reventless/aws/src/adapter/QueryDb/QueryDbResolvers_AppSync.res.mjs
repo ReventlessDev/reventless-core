@@ -21,6 +21,7 @@ import * as AppSync_VisitorLimit$ReventlessAws from "../../components/Api/AppSyn
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as OwnerScopeDiagnostics$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/OwnerScopeDiagnostics.res.mjs";
 import * as QueryDbResolvers_Trail$ReventlessAws from "./QueryDbResolvers_Trail.res.mjs";
+import * as QueryDbStorage_DynamoDb$ReventlessAws from "./QueryDbStorage_DynamoDb.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as QueryInterceptor_Provisioning$ReventlessAws from "./QueryInterceptor_Provisioning.res.mjs";
@@ -103,7 +104,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     let resolverByIdSingle = includeIdParam ? makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIdSort(subIdField, ownerField, elevatedGroups, retiredField, retiredValues) : AppSync_Resolver_Functions$PulumiAws.getItemById(ownerField, elevatedGroups, retiredField, retiredValues)) : makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, sortField => makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", AppSync_Resolver_Functions$PulumiAws.queryItemsWithSortConditions(sortField, ownerField, elevatedGroups))) : undefined;
     let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
-    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(name$1, stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
+    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(QueryDbStorage_DynamoDb$ReventlessAws.ordering, name$1, stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
     let filterFieldNames = capability.filterFields.map(f => f.name);
     let rangeFieldNames = Stdlib_Array.filterMap(capability.filterFields, f => {
       if (f.range) {

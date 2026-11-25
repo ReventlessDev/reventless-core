@@ -48,7 +48,11 @@ let annotated = (~trailIndex: option<array<string>>) =>
   ->S.castToUnknown
 
 let capabilityOf = (~trailIndex) =>
-  GraphQL_FragmentGenerator.deriveServerCapability(~entityName="Orders", annotated(~trailIndex))
+  GraphQL_FragmentGenerator.deriveServerCapability(
+    ~ordering=Keys,
+    ~entityName="Orders",
+    annotated(~trailIndex),
+  )
 
 // A row as the save stores it: the trail, and the attributes derived from it.
 let row = (id, lifecycle, entries: array<(string, string)>) => {
