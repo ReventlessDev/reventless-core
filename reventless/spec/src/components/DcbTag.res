@@ -1239,6 +1239,42 @@ let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInfer
 }
 
 /**
+The keys of one object-variant's tags the author declared (`@dcbTag`, `ReferenceCode.tag`) on
+fields that are no identity: not `*Id`-shaped, not typed as one, not a partition. A code a thing
+is found by (`chargingToken`). Sorted and deduplicated.
+*/
+let lookupKeysOfProperties = (properties: dict<S.t<unknown>>): array<string> => {
+  let isIdName = (name: string) => name->String.endsWith("Ids") || name->String.endsWith("Id")
+  let valueOf = (fieldSchema: S.t<unknown>) => {
+    let valueSchema = switch fieldSchema {
+    | Array({additionalItems: Schema(item)}) => item
+    | _ => fieldSchema
+    }
+    valueSchema->Semantic.unwrapOptional->Option.getOr(valueSchema)
+  }
+  let keys =
+    properties
+    ->Dict.toArray
+    ->Array.filterMap(((name, fieldSchema)) => {
+      let value = valueOf(fieldSchema)
+      if (
+        name != "TAG" &&
+        isDeclaredTag(value) &&
+        !isIdName(name) &&
+        !isPartitionTag(value) &&
+        value->Semantic.identityKey->Option.isNone
+      ) {
+        Some(resolveTagKey(name, value))
+      } else {
+        None
+      }
+    })
+  let seen = Set.make()
+  keys->Array.forEach(k => seen->Set.add(k))
+  Array.fromIterator(seen->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
+}
+
+/**
 Extracts the `DcbScopeInference.eventShape`s (variant name + `*Id` fields) from a
 variant schema. Payload-less arms are kept (no id fields); non-variant schemas
 return a single shape.
@@ -1250,6 +1286,10 @@ let eventShapesOfSchema = (schema: S.t<'a>): array<DcbScopeInference.eventShape>
       variantTagName(properties)->Option.map(eventType => {
         DcbScopeInference.eventType,
         idFields: idFieldsOfProperties(properties),
+        lookups: ?switch lookupKeysOfProperties(properties) {
+        | [] => None
+        | keys => Some(keys)
+        },
       })
     | String({const}) => Some({DcbScopeInference.eventType: const, idFields: []})
     | _ => None
@@ -1343,6 +1383,12 @@ let sliceShapeFromSchemas = (
   {
     sliceName: name,
     command: eventShapesOfSchema(commandSchema)->Array.flatMap(e => e.idFields),
+    commandLookups: ?switch eventShapesOfSchema(commandSchema)->Array.flatMap(e =>
+      e.lookups->Option.getOr([])
+    ) {
+    | [] => None
+    | keys => Some(keys)
+    },
     consumed: eventShapesOfSchema(consumedEventSchema),
     produced: eventShapesOfSchema(eventSchema),
     partitionHint,

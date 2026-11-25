@@ -73,8 +73,11 @@ type idField = {
   crossPartition?: bool,
 }
 
-/** One variant arm: its constructor name and the `*Id` fields it carries. */
-type eventShape = {eventType: string, idFields: array<idField>}
+/** One variant arm: its constructor name and the `*Id` fields it carries. `lookups`: the keys of
+    the tags the author declared on fields that are no identity (a code a thing is found by,
+    `ReferenceCode.tag`). They never take part in choosing a partition; an event is indexed by
+    them, and a decision presented one reads by it on its own. */
+type eventShape = {eventType: string, idFields: array<idField>, lookups?: array<string>}
 
 /**
 The structural shape of one slice, the boundary type both adapters produce:
@@ -88,6 +91,9 @@ The structural shape of one slice, the boundary type both adapters produce:
 type sliceShape = {
   sliceName: string,
   command: array<idField>,
+  /** The keys of the declared tags on the slice's command that are no identity: the codes it is
+      presented (`chargingToken`). */
+  commandLookups?: array<string>,
   consumed: array<eventShape>,
   produced: array<eventShape>,
   partitionHint: option<string>,
@@ -623,6 +629,22 @@ let infer = (slices: array<sliceShape>): derived => {
       }
     )
   })
+  // A code the command is presented and an event it reads is tagged by (`chargingToken` on
+  // *start session* and on *driver registered*) finds the thing it names wherever that is: read on
+  // a clause of its own, never AND-ed with the slice's own key, which that event does not carry.
+  slices->Array.forEach(s => {
+    let presented = s.commandLookups->Option.getOr([])
+    s.consumed->Array.forEach(e =>
+      e.lookups
+      ->Option.getOr([])
+      ->Array.forEach(
+        k =>
+          if presented->Array.includes(k) {
+            crossKeys->Set.add(k)
+          },
+      )
+    )
+  })
   let crossPartitionTagKeys =
     Array.fromIterator(crossKeys->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
 
@@ -646,6 +668,9 @@ let infer = (slices: array<sliceShape>): derived => {
     s.produced->Array.forEach(e => {
       let readKeys = readKeysByEventType->Dict.get(e.eventType)->Option.getOr([])
       let indexed = e->keysOfEvent->Array.filter(k => Some(k) == own || readKeys->Array.includes(k))
+      // A tag the author declared on a field that is no identity is the event's to be found by:
+      // indexed always.
+      let indexed = Array.concat(indexed, e.lookups->Option.getOr([]))
       tagKeysByEventType->Dict.set(e.eventType, dedupSorted(indexed))
     })
   })

@@ -881,6 +881,38 @@ function idFieldsOfProperties(properties) {
   });
 }
 
+function lookupKeysOfProperties(properties) {
+  let isIdName = name => {
+    if (name.endsWith("Ids")) {
+      return true;
+    } else {
+      return name.endsWith("Id");
+    }
+  };
+  let valueOf = fieldSchema => {
+    let valueSchema;
+    if (fieldSchema.type === "array") {
+      let item = fieldSchema.additionalItems;
+      valueSchema = item === "strip" || item === "strict" ? fieldSchema : item;
+    } else {
+      valueSchema = fieldSchema;
+    }
+    return Stdlib_Option.getOr(Semantic$Reventless.unwrapOptional(valueSchema), valueSchema);
+  };
+  let keys = Stdlib_Array.filterMap(Object.entries(properties), param => {
+    let name = param[0];
+    let value = valueOf(param[1]);
+    if (name !== "TAG" && isDeclaredTag(value) && !isIdName(name) && !Stdlib_Option.isSome(Sury.$Metadata_get(value, dcbPartitionTagId)) && Stdlib_Option.isNone(Semantic$Reventless.identityKey(value))) {
+      return resolveTagKey(name, value);
+    }
+  });
+  let seen = new Set();
+  keys.forEach(k => {
+    seen.add(k);
+  });
+  return Array.from(seen.values()).toSorted(Primitive_string.compare);
+}
+
 function eventShapesOfSchema(schema) {
   let ofVariant = variantSchema => {
     switch (variantSchema.type) {
@@ -896,10 +928,14 @@ function eventShapesOfSchema(schema) {
         }
       case "object" :
         let properties = variantSchema.properties;
-        return Stdlib_Option.map(variantTagName(properties), eventType => ({
-          eventType: eventType,
-          idFields: idFieldsOfProperties(properties)
-        }));
+        return Stdlib_Option.map(variantTagName(properties), eventType => {
+          let keys = lookupKeysOfProperties(properties);
+          return {
+            eventType: eventType,
+            idFields: idFieldsOfProperties(properties),
+            lookups: keys.length !== 0 ? keys : undefined
+          };
+        });
       default:
         return;
     }
@@ -965,9 +1001,11 @@ function chapterOfModuleUrl(moduleUrl) {
 function sliceShapeFromSchemas(name, commandSchema, consumedEventSchema, eventSchema, moduleUrl) {
   let match = extractPartitionTagFields(eventSchema);
   let partitionHint = match.length !== 1 ? undefined : match[0];
+  let keys = eventShapesOfSchema(commandSchema).flatMap(e => Stdlib_Option.getOr(e.lookups, []));
   return {
     sliceName: name,
     command: eventShapesOfSchema(commandSchema).flatMap(e => e.idFields),
+    commandLookups: keys.length !== 0 ? keys : undefined,
     consumed: eventShapesOfSchema(consumedEventSchema),
     produced: eventShapesOfSchema(eventSchema),
     partitionHint: partitionHint,
@@ -1268,6 +1306,7 @@ export {
   crossPartitionKeysOfProperties,
   extractCrossPartitionTagKeys,
   idFieldsOfProperties,
+  lookupKeysOfProperties,
   eventShapesOfSchema,
   extractPartitionTagFields,
   chapterOfModuleUrl,

@@ -401,6 +401,17 @@ function infer(slices) {
       }
     });
   });
+  slices.forEach(s => {
+    let presented = Stdlib_Option.getOr(s.commandLookups, []);
+    s.consumed.forEach(e => {
+      Stdlib_Option.getOr(e.lookups, []).forEach(k => {
+        if (presented.includes(k)) {
+          crossKeys.add(k);
+          return;
+        }
+      });
+    });
+  });
   let crossPartitionTagKeys = Array.from(crossKeys.values()).toSorted(Primitive_string.compare);
   let readKeysByEventType = {};
   slices.forEach(s => {
@@ -421,7 +432,8 @@ function infer(slices) {
           return readKeys.includes(k);
         }
       });
-      tagKeysByEventType[e.eventType] = dedupSorted(indexed);
+      let indexed$1 = indexed.concat(Stdlib_Option.getOr(e.lookups, []));
+      tagKeysByEventType[e.eventType] = dedupSorted(indexed$1);
     });
   });
   let crossPartitionPairs = pairsOf(slices, partitionBySlice, crossPartitionTagKeys);

@@ -493,10 +493,11 @@ function validatePartitionHintsVsInference(shapes) {
     if (!DcbScopeInference$Reventless.producedKeys(s).includes(hint)) {
       return;
     }
-    let withoutTag = e => ({
-      eventType: e.eventType,
-      idFields: e.idFields.filter(f => Primitive_object.notequal(f.byTag, true))
-    });
+    let withoutTag = e => {
+      let newrecord = {...e};
+      newrecord.idFields = e.idFields.filter(f => Primitive_object.notequal(f.byTag, true));
+      return newrecord;
+    };
     let declaredByTag = s.produced.some(e => e.idFields.some(f => {
       if (f.name === hint) {
         return Primitive_object.equal(f.byTag, true);

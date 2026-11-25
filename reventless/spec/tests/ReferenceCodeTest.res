@@ -54,3 +54,85 @@ describe("a reference code", () => {
     expect(ReferenceCode.grouped("7KQ3X9MD4TPA"))->toBe("7KQ3-X9MD-4TPA")
   )
 })
+
+// A code presented to a decision finds the thing it names: the event that records it is indexed by
+// it, and the decision reads it on a clause of its own, not AND-ed with its own key, which that
+// event does not carry. Without this a presented code was never found: the tag was dropped on
+// append, since only identities were indexed.
+module SignUpSlice = {
+  @schema
+  type command =
+    | SignUp({
+        @s.matches(DcbTag.string) memberId: string,
+        code: @s.matches(ReferenceCode.issued) ReferenceCode.t,
+      })
+  @schema
+  type event =
+    | MemberSignedUp({
+        @s.matches(DcbTag.string) memberId: string,
+        code: @s.matches(ReferenceCode.tag) ReferenceCode.t,
+      })
+}
+
+module PresentSlice = {
+  @schema
+  type command =
+    | Present({
+        @s.matches(DcbTag.string) sessionId: string,
+        code: @s.matches(ReferenceCode.tag) ReferenceCode.t,
+      })
+  @schema
+  type consumedEvent =
+    | MemberSignedUp({
+        @s.matches(DcbTag.string) memberId: string,
+        code: @s.matches(ReferenceCode.tag) ReferenceCode.t,
+      })
+  @schema
+  type event =
+    | SessionStarted({
+        @s.matches(DcbTag.string) sessionId: string,
+        @s.matches(DcbTag.string) memberId: string,
+      })
+}
+
+describe("a code presented to a decision", () => {
+  let scope = DcbTag.deriveEffectiveScope([
+    {
+      name: "SignUp",
+      commandSchema: SignUpSlice.commandSchema->S.castToUnknown,
+      consumedEventSchema: S.unit->S.castToUnknown,
+      eventSchema: SignUpSlice.eventSchema->S.castToUnknown,
+    },
+    {
+      name: "Present",
+      commandSchema: PresentSlice.commandSchema->S.castToUnknown,
+      consumedEventSchema: PresentSlice.consumedEventSchema->S.castToUnknown,
+      eventSchema: PresentSlice.eventSchema->S.castToUnknown,
+    },
+  ])
+
+  testSync("indexes the event that records it by it", () =>
+    expect(scope.tagKeysByEventType->Dict.get("MemberSignedUp"))->toEqual(
+      Some(["code", "memberId"]),
+    )
+  )
+
+  testSync("is read on a clause of its own", () => {
+    let query = DcbTag.buildQueryFromCommand(
+      ~eventTypes=["MemberSignedUp", "SessionStarted"],
+      ~schema=PresentSlice.commandSchema,
+      ~value=PresentSlice.Present({sessionId: "s-1", code: "AMP-0001"}),
+      ~tagKeysByEventType=scope.tagKeysByEventType,
+      ~crossPartitionTagKeys=scope.crossPartitionTagKeys,
+    )
+    expect(
+      query
+      ->Array.filter(
+        qi =>
+          qi.tags == Some([{DcbTag.key: "code", value: "AMP-0001"}]) &&
+            qi.eventTypes->Option.getOr([])->Array.includes("MemberSignedUp"),
+      )
+      ->Array.length,
+    )->toBe(1)
+  })
+})
