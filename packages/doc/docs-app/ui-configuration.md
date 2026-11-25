@@ -405,6 +405,14 @@ annotated fields first. Lists, objects, `@hidden` fields and personal fields do 
 since a personal field may be stored sealed. The same read model can therefore offer
 more sort fields on one deployment than on another.
 
+**`x-reventless-orders`** on a read model's published schema is the list of fields
+the server orders the *whole* list by, across every page, on this deployment. A field
+in it can be sorted by the server however long the list; a field not in it is not, and
+a client sorts the rows it holds. On DynamoDB the list holds the keys, the `@index`
+fields and an indexed trail's dates; an `@scanSort` field that is no key stays in
+`OrderField` but is left out, because its order holds within one read window only. A
+schema without the key comes from an older platform: read the annotations instead.
+
 `@id` is usually unnecessary — the key is inferred from the component name. Reach
 for it when inference has nothing to go on:
 

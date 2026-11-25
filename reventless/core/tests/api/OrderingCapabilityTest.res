@@ -106,3 +106,67 @@ describe("the generated OrderField", () => {
     )
   })
 })
+
+// `total` sorts within one DynamoDB read window only; `orderId` is a key, so its @scanSort holds.
+let perWindow =
+  S.schema(s =>
+    {
+      "orderId": s.matches(S.string),
+      "total": s.matches(S.float),
+      "itemCount": s.matches(S.int),
+    }
+  )
+  ->S.castToUnknown
+  ->S.Metadata.set(
+    ~id=Reventless.StateAnnotations.stateAnnotationsId,
+    {...spec, indexes: [], hidden: [], scanSort: ["total", "orderId"]},
+  )
+
+describe("the fields the server orders the whole list by", () => {
+  let orders = ordering =>
+    GraphQL_FragmentGenerator.wholeListOrders(~ordering, ~entityName="Orders", perWindow)
+
+  testSync(
+    "on a store ordering by keys, leave out a per-window @scanSort that OrderField keeps",
+    () =>
+      expect((
+        GraphQL_FragmentGenerator.deriveServerCapability(
+          ~ordering=Keys,
+          ~entityName="Orders",
+          perWindow,
+        ).sortFields,
+        orders(Keys),
+      ))->toEqual((["orderId", "total"], ["orderId"])),
+  )
+
+  testSync("on a store ordering any field, are every sort field", () =>
+    expect(orders(AnyField))->toEqual(["orderId", "total", "itemCount"])
+  )
+})
+
+describe("x-reventless-orders on a published read model", () => {
+  let published = () =>
+    Plugin_Structure.readSideDefFromSpec(
+      ~plugin="Shop",
+      ~name="Orders",
+      ~stateSchema=perWindow,
+      ~authorization=AllowAnonymous,
+    ).schema
+    ->JSON.parseOrThrow
+    ->JSON.Decode.object
+    ->Option.flatMap(o => o->Dict.get("x-reventless-orders"))
+
+  afterAll(() => QueryDb_Ordering.set(_ => Keys))
+
+  testSync("lists the keys where the read model's store orders by keys", () => {
+    QueryDb_Ordering.set(_ => Keys)
+    expect(published())->toEqual(Some(JSON.Encode.array([JSON.Encode.string("orderId")])))
+  })
+
+  testSync("lists every plain field where the read model's store orders any field", () => {
+    QueryDb_Ordering.set(_ => AnyField)
+    expect(published())->toEqual(
+      Some(JSON.Encode.array(["orderId", "total", "itemCount"]->Array.map(JSON.Encode.string))),
+    )
+  })
+})

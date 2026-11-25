@@ -678,6 +678,53 @@ let deriveServerCapability = (
   }
 }
 
+/** The names the server orders the whole list by. All the sort fields, except where the store
+    orders by its keys an `@scanSort` field that is no key, whose order holds for one read window. */
+let wholeListOrders = (
+  ~ordering: QueryDb_Ordering.t,
+  ~entityName: string,
+  schema: S.t<unknown>,
+): array<string> => {
+  let sortFields = deriveServerCapability(~ordering, ~entityName, schema).sortFields
+  switch (ordering, Reventless.StateAnnotations.getSpec(schema)) {
+  | (Keys, Some(spec)) =>
+    let keyed =
+      [spec.ids, spec.subIds, spec.compositeSubIds, spec.indexes->Array.map(((name, _)) => name)]
+      ->Array.flat
+      ->Array.concat(
+        resolveKeyField(~rowKeying=RowKeyedByStateField, ~entityName, schema)->Option.mapOr([], ((
+          field,
+          _,
+        )) => [field]),
+      )
+    let perWindow = spec.scanSort->Array.filter(name => !(keyed->Array.includes(name)))
+    sortFields->Array.filter(name => !(perWindow->Array.includes(name)))
+  | _ => sortFields
+  }
+}
+
+let ordersKey = "x-reventless-orders"
+
+/** A read model's published schema with the names the server orders its whole list by. */
+let withOrders = (
+  objSchema: JSON.t,
+  ~ordering: QueryDb_Ordering.t,
+  ~entityName: string,
+  schema: S.t<unknown>,
+): JSON.t =>
+  switch objSchema->JSON.Decode.object {
+  | Some(obj) =>
+    let copy = Dict.copy(obj)
+    copy->Dict.set(
+      ordersKey,
+      wholeListOrders(~ordering, ~entityName, schema)
+      ->Array.map(JSON.Encode.string)
+      ->JSON.Encode.array,
+    )
+    JSON.Encode.object(copy)
+  | None => objSchema
+  }
+
 // Returns one warning per `@scanSort` field that is NOT also a sort key of the
 // table or any GSI. The Scan-based AWS resolver evaluates such requests as a
 // JS-runtime per-page sort over a full Scan — correct, but expensive. The

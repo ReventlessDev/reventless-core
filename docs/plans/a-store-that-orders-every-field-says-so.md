@@ -1,6 +1,6 @@
 # Plan: a store that orders every field says so
 
-> **Status:** 🔨 In progress. [OES1](#4-steps) to [OES3](#4-steps) built 2026-11-25, with their part
+> **Status:** 🔨 In progress. [OES1](#4-steps) to [OES4](#4-steps) built 2026-11-25, with their part
 > of [OES5](#4-steps) (see each *As built*). Written 2026-11-23.
 >
 > **Questions and short answers:**
@@ -152,6 +152,12 @@ chosen the store, the platform writes the list when it publishes the read model,
 rest of its offer.
 *Done when* a test reads the list off a read model on each store, and a DynamoDB read model with a
 per-window `@scanSort` lists the field in `OrderField` and not in `x-reventless-orders`.
+
+*As built (2026-11-25):* the store is chosen before any plugin is built on both platforms, so
+`Plugin_Structure` writes the list itself (`publishedStateSchema`) wherever it publishes a read
+model's or a state view slice's schema, from `GraphQL_FragmentGenerator.wholeListOrders`. On
+`Keys` that is the sort fields less an `@scanSort` that is no key: `@index` fields stay, since a
+sort on one is a Query and holds across pages.
 
 **OES5 Docs.** With each step:
 [query capability annotations](../../packages/doc/docs-app/ui-configuration.md#29-query-capability--what-the-ui-can-filter-and-sort-by)

@@ -1137,6 +1137,17 @@ let visibilityTag = (v: Reventless.Visibility.t): option<Reventless.Visibility.t
  time the platform has no built module to hand itself. Every extractor here is the
  one `make` calls, so the two cannot drift — a hand-written record did, four times.
  */
+/** A read model's published schema, with the names its store orders the whole list by. */
+let publishedStateSchema = (~name: string, stateSchema: S.t<unknown>): string =>
+  stateSchema
+  ->SuryToJsonSchema.deriveObjectSchema
+  ->GraphQL_FragmentGenerator.withOrders(
+    ~ordering=QueryDb_Ordering.forReadModel(name),
+    ~entityName=name,
+    stateSchema,
+  )
+  ->JSON.stringify
+
 let readSideDefFromSpec = (
   ~plugin: string,
   ~name: string,
@@ -1163,7 +1174,7 @@ let readSideDefFromSpec = (
   {
     Reventless.Plugin.name,
     queryField: qf.listFieldName,
-    schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+    schema: publishedStateSchema(~name, stateSchema),
     consumedEventTypes,
     linkedWriteSide,
     labelField: label.field,
@@ -1671,7 +1682,7 @@ let make = (
       {
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
-        schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+        schema: publishedStateSchema(~name=R.Spec.name, stateSchema),
         consumedEventTypes: consumed,
         linkedWriteSide: linkedWriteSideFor(consumed),
         labelField: label.field,
@@ -1724,7 +1735,7 @@ let make = (
         {
           Reventless.Plugin.name: SVS.Spec.name,
           queryField: qf.listFieldName,
-          schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+          schema: publishedStateSchema(~name=SVS.Spec.name, stateSchema),
           consumedEventTypes: consumed,
           linkedWriteSide: linkedWriteSideFor(consumed),
           labelField: label.field,

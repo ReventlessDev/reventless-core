@@ -32,6 +32,7 @@ import * as SchemaType$ReventlessCore from "../../components/Api/SchemaType.res.
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
+import * as QueryDb_Ordering$ReventlessCore from "../../components/QueryDb/QueryDb_Ordering.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../../components/Api/SuryToJsonSchema.res.mjs";
 import * as Capability_Inference$ReventlessCore from "./Capability_Inference.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../../components/Api/GraphQL_FragmentGenerator.res.mjs";
@@ -838,6 +839,10 @@ function visibilityTag(v) {
   }
 }
 
+function publishedStateSchema(name, stateSchema) {
+  return JSON.stringify(GraphQL_FragmentGenerator$ReventlessCore.withOrders(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, stateSchema), QueryDb_Ordering$ReventlessCore.forReadModel(name), name, stateSchema));
+}
+
 function readSideDefFromSpec(plugin, name, stateSchema, authorization, visibilityOpt, consumedEventTypesOpt, linkedWriteSideOpt, chapter) {
   let visibility = visibilityOpt !== undefined ? visibilityOpt : "Public";
   let consumedEventTypes = consumedEventTypesOpt !== undefined ? consumedEventTypesOpt : [];
@@ -848,7 +853,7 @@ function readSideDefFromSpec(plugin, name, stateSchema, authorization, visibilit
   return {
     name: name,
     queryField: qf.listFieldName,
-    schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, stateSchema)),
+    schema: publishedStateSchema(name, stateSchema),
     consumedEventTypes: consumedEventTypes,
     linkedWriteSide: linkedWriteSide,
     labelField: label.field,
@@ -1209,7 +1214,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
-      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, stateSchema)),
+      schema: publishedStateSchema(R.Spec.name, stateSchema),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: label.field,
@@ -1250,7 +1255,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
-      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(undefined, undefined, stateSchema)),
+      schema: publishedStateSchema(SVS.Spec.name, stateSchema),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: label.field,
@@ -1737,6 +1742,7 @@ export {
   toCommandDef,
   extractCommandDefs,
   visibilityTag,
+  publishedStateSchema,
   readSideDefFromSpec,
   make,
 }
