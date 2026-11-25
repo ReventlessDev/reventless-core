@@ -287,8 +287,14 @@ module Make = (
       let stored = name => ReventlessCore.GraphQL_FragmentGenerator.storedName(capability, name)
       let numeric = name => ReventlessCore.GraphQL_FragmentGenerator.isNumeric(capability, name)
       // A numeric field compares as a number, its bound sent as one.
-      let rangeExpr = name =>
-        numeric(name) ? `${col(stored(name))}::numeric` : jsonTextC(stored(name))
+      // A boolean counts as 0 or 1, the way the spec and SQLite order it.
+      let numberC = field => {
+        let raw = `item->'${field->String.replaceAll("'", "''")}'`
+        `(CASE WHEN jsonb_typeof(${raw}) = 'boolean' THEN (CASE WHEN ${col(
+            field,
+          )}::boolean THEN 1 ELSE 0 END)::numeric ELSE ${col(field)}::numeric END)`
+      }
+      let rangeExpr = name => numeric(name) ? numberC(stored(name)) : jsonTextC(stored(name))
       let rangeParam = (name, s) =>
         switch numeric(name) ? Float.fromString(s) : None {
         | Some(n) => JSON.Encode.float(n)
@@ -346,29 +352,36 @@ module Make = (
       | Some(name) => rangeExpr(name)
       | None => idExprC
       }
-      let afterCursor = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
-      switch afterCursor {
-      | Some(c) =>
-        let cv = ReventlessCore.QueryDbListQuery.decodeCursor(c)
-        // A cursor minted on a row without the value carries its id, not a number.
-        let cursorExpr = switch orderByField {
-        | Some(attr)
-          if numeric(orderByName->Option.getOr("")) && Float.fromString(cv)->Option.isNone =>
-          jsonTextC(attr)
-        | _ => orderExpr
+      let afterCursor =
+        argsDict
+        ->Dict.get("after")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.flatMap(c => c == "" ? None : Some(c))
+      // After the cursor's (value, id): rows without a value come last either way.
+      switch (afterCursor, orderByName) {
+      | (Some(c), Some(name)) =>
+        let at = ReventlessCore.QueryDbListQuery.decodePosition(c)
+        let id = b->param(JSON.Encode.string(at.id))
+        switch at.value {
+        | Some(v) =>
+          let value = b->param(rangeParam(name, v))
+          whereParts->Array.push(
+            `((${orderExpr} IS NOT NULL AND (${orderExpr} ${isDesc
+                ? "<"
+                : ">"} ${value} OR (${orderExpr} = ${value} AND ${idExprC} > ${id}))) OR ${orderExpr} IS NULL)`,
+          )
+        | None => whereParts->Array.push(`(${orderExpr} IS NULL AND ${idExprC} > ${id})`)
         }
+      | (Some(c), None) =>
         whereParts->Array.push(
-          `${cursorExpr} ${isDesc ? "<" : ">"} ${b->param(
-              switch orderByName {
-              | Some(name) => rangeParam(name, cv)
-              | None => JSON.Encode.string(cv)
-              },
+          `${idExprC} > ${b->param(
+              JSON.Encode.string(ReventlessCore.QueryDbListQuery.decodeCursor(c)),
             )}`,
         )
-      | None => ()
+      | (None, _) => ()
       }
       let orderClause = switch orderByName {
-      | Some(_) => `${orderExpr} ${isDesc ? "DESC" : "ASC"}, ${idExprC} ASC`
+      | Some(_) => `${orderExpr} IS NULL, ${orderExpr} ${isDesc ? "DESC" : "ASC"}, ${idExprC} ASC`
       | None => `${idExprC} ASC`
       }
       let pageSize =
@@ -384,11 +397,6 @@ module Make = (
         (await P.pool->PgDriver.query(sql, b.params))->Array.map(decodeRow(~withId=true, ...))
       let hasMore = rows->Array.length > pageSize
       let pageItems = rows->Array.slice(~start=0, ~end=pageSize)
-      let cursorField = orderByField->Option.getOr("id")
-      let cursorValueOf = item =>
-        ReventlessCore.QueryDbListQuery.getFieldString(item, cursorField)->Option.getOr(
-          ReventlessCore.QueryDbListQuery.getId(item),
-        )
       Some(
         ReventlessCore.QueryDbListQuery.buildConnection(
           ~pageItems,
@@ -397,7 +405,7 @@ module Make = (
           // forward page reached by a cursor has one behind it. Hardcoding false
           // made Prev disappear on exactly the pages that have a previous one.
           ~hasPreviousPage=afterCursor->Option.isSome,
-          ~cursorValueOf,
+          ~cursorOf=ReventlessCore.QueryDbListQuery.cursorOf(~orderByField, ...),
         ),
       )
     }

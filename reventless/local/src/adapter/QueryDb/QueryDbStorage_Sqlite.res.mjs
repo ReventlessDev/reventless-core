@@ -428,12 +428,24 @@ function makeStorage(db, bus, name, indexes, subIdField) {
       }
     });
     if (afterCursor !== undefined) {
-      whereParts.push(orderExpr + ` ` + (
-        isDesc ? "<" : ">"
-      ) + ` ?`);
-      params.push(orderByName !== undefined ? rangeParam(orderByName, QueryDbListQuery$ReventlessCore.decodeCursor(afterCursor)) : QueryDbListQuery$ReventlessCore.decodeCursor(afterCursor));
+      if (orderByName !== undefined) {
+        let at = QueryDbListQuery$ReventlessCore.decodePosition(afterCursor);
+        let v = at.value;
+        if (v !== undefined) {
+          whereParts.push(`((` + orderExpr + ` IS NOT NULL AND (` + orderExpr + ` ` + (
+            isDesc ? "<" : ">"
+          ) + ` ? OR (` + orderExpr + ` = ? AND ` + idExpr + ` > ?))) OR ` + orderExpr + ` IS NULL)`);
+          params.push(rangeParam(orderByName, v), rangeParam(orderByName, v), at.id);
+        } else {
+          whereParts.push(`(` + orderExpr + ` IS NULL AND ` + idExpr + ` > ?)`);
+          params.push(at.id);
+        }
+      } else {
+        whereParts.push(idExpr + ` > ?`);
+        params.push(QueryDbListQuery$ReventlessCore.decodeCursor(afterCursor));
+      }
     }
-    let orderClause = orderByName !== undefined ? orderExpr + ` ` + (
+    let orderClause = orderByName !== undefined ? orderExpr + ` IS NULL, ` + orderExpr + ` ` + (
         isDesc ? "DESC" : "ASC"
       ) + `, ` + idExpr + ` ASC` : idExpr + ` ASC`;
     let pageSize = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0), QueryDbListQuery$ReventlessCore.defaultListPageSize);
@@ -441,9 +453,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     let rows = SqliteDriver$ReventlessLocal.all(preparedList(sql), params.concat([pageSize + 1 | 0])).map(rowToItem);
     let hasMore = rows.length > pageSize;
     let pageItems = rows.slice(0, pageSize);
-    let cursorField = Stdlib_Option.getOr(orderByField, "id");
-    let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessCore.getFieldString(item, cursorField), QueryDbListQuery$ReventlessCore.getId(item));
-    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, Stdlib_Option.isSome(afterCursor), cursorValueOf);
+    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, Stdlib_Option.isSome(afterCursor), extra => QueryDbListQuery$ReventlessCore.cursorOf(orderByField, extra));
   };
   bus.registerQueryDbListPage(name, listPage);
   return {

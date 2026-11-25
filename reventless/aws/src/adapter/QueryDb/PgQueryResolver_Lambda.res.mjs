@@ -50,7 +50,7 @@ function withId(item, id) {
 }
 
 function emptyConnection() {
-  return QueryDbListQuery$ReventlessCore.buildConnection([], false, false, param => "");
+  return QueryDbListQuery$ReventlessCore.buildConnection([], false, false, param => QueryDbListQuery$ReventlessCore.encodeCursor(""));
 }
 
 async function runInterceptor(binding, payload) {

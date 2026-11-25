@@ -238,7 +238,12 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
       [
         ("orderBy", orderBy("name", "DESC")),
         ("first", JSON.Encode.int(2)),
-        ("after", JSON.Encode.string(cur("Delta"))),
+        (
+          "after",
+          JSON.Encode.string(
+            ReventlessCore.QueryDbListQuery.encodePosition({value: Some("Delta"), id: "p-5"}),
+          ),
+        ),
       ],
     )
   )

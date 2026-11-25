@@ -67,13 +67,93 @@ function compareValues(numeric, a, b) {
   }
 }
 
-function buildConnection(pageItems, hasNextPage, hasPreviousPage, cursorValueOf) {
+function getSortString(item, field) {
+  let b = getFieldBool(item, field);
+  if (b !== undefined) {
+    return b ? "1" : "0";
+  } else {
+    return getFieldString(item, field);
+  }
+}
+
+function positionOf(item, field) {
+  return {
+    value: getSortString(item, field),
+    id: getId(item)
+  };
+}
+
+function encodePosition(p) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify([
+    Stdlib_Option.mapOr(p.value, null, prim => prim),
+    p.id
+  ]))));
+}
+
+function decodePosition(cursor) {
+  let raw = atob(cursor);
+  let pair;
+  try {
+    let match = Stdlib_JSON.Decode.array(JSON.parse(decodeURIComponent(escape(raw))));
+    if (match !== undefined && match.length === 2) {
+      let value = match[0];
+      let id = match[1];
+      pair = Stdlib_Option.map(Stdlib_JSON.Decode.string(id), id => ({
+        value: Stdlib_JSON.Decode.string(value),
+        id: id
+      }));
+    } else {
+      pair = undefined;
+    }
+  } catch (exn) {
+    pair = undefined;
+  }
+  return Stdlib_Option.getOr(pair, {
+    value: raw,
+    id: ""
+  });
+}
+
+function comparePositions(numeric, isDesc, a, b) {
+  let byId = a.id < b.id ? -1 : (
+      a.id > b.id ? 1 : 0
+    );
+  let match = a.value;
+  let match$1 = b.value;
+  if (match === undefined) {
+    if (match$1 !== undefined) {
+      return 1;
+    } else {
+      return byId;
+    }
+  }
+  if (match$1 === undefined) {
+    return -1;
+  }
+  let primary = compareValues(numeric, match, match$1);
+  let p = isDesc ? -primary | 0 : primary;
+  if (p !== 0) {
+    return p;
+  } else {
+    return byId;
+  }
+}
+
+function cursorOf(orderByField, item) {
+  if (orderByField !== undefined) {
+    return encodePosition(positionOf(item, orderByField));
+  } else {
+    return btoa(getId(item));
+  }
+}
+
+function buildConnection(pageItems, hasNextPage, hasPreviousPage, cursorOf) {
   let edges = pageItems.map(item => ({
     node: item,
-    cursor: btoa(cursorValueOf(item))
+    cursor: cursorOf(item)
   }));
-  let startCursor = Stdlib_Option.map(pageItems[0], item => btoa(cursorValueOf(item)));
-  let endCursor = Stdlib_Option.map(pageItems[pageItems.length - 1 | 0], item => btoa(cursorValueOf(item)));
+  let startCursor = Stdlib_Option.map(pageItems[0], cursorOf);
+  let endCursor = Stdlib_Option.map(pageItems[pageItems.length - 1 | 0], cursorOf);
   return {
     edges: edges,
     pageInfo: {
@@ -150,39 +230,18 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
   let filtered$1 = orderByName !== undefined && orderByField !== undefined && GraphQL_FragmentGenerator$ReventlessCore.onlyReached(capability, orderByName) ? filtered.filter(item => Stdlib_Option.isSome(getFieldString(item, orderByField))) : filtered;
   let direction = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC");
   let isDesc = direction === "DESC";
-  let sorted;
-  if (orderByField !== undefined) {
-    sorted = filtered$1.toSorted((a, b) => {
-      let av = Stdlib_Option.getOr(getFieldString(a, orderByField), "");
-      let bv = Stdlib_Option.getOr(getFieldString(b, orderByField), "");
-      let primary = compareValues(orderNumeric, av, bv);
-      let primary$1 = isDesc ? -primary | 0 : primary;
-      if (primary$1 !== 0) {
-        return primary$1;
-      }
-      let aid = getId(a);
-      let bid = getId(b);
-      if (aid < bid) {
-        return -1;
-      } else if (aid > bid) {
-        return 1;
-      } else {
-        return 0;
-      }
-    });
-  } else {
-    sorted = filtered$1.toSorted((a, b) => {
-      let aid = getId(a);
-      let bid = getId(b);
-      if (aid < bid) {
-        return -1;
-      } else if (aid > bid) {
-        return 1;
-      } else {
-        return 0;
-      }
-    });
-  }
+  let positionIn = item => {
+    if (orderByField !== undefined) {
+      return positionOf(item, orderByField);
+    } else {
+      return {
+        value: undefined,
+        id: getId(item)
+      };
+    }
+  };
+  let compare = (extra, extra$1) => comparePositions(orderNumeric, isDesc, extra, extra$1);
+  let sorted = filtered$1.toSorted((a, b) => compare(positionIn(a), positionIn(b)));
   let first = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0);
   let cursorArg = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(argsDict[key], Stdlib_JSON.Decode.string), s => {
     if (s === "") {
@@ -195,33 +254,27 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
   let last = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["last"], Stdlib_JSON.Decode.float), prim => prim | 0);
   let before = cursorArg("before");
   let isBackward = Stdlib_Option.isSome(last) || Stdlib_Option.isSome(before);
-  let cursorField = Stdlib_Option.getOr(orderByField, "id");
-  let getCursorValue = item => Stdlib_Option.getOr(getFieldString(item, cursorField), getId(item));
+  let cursorPosition = c => {
+    if (orderByField !== undefined) {
+      return decodePosition(c);
+    } else {
+      return {
+        value: undefined,
+        id: atob(c)
+      };
+    }
+  };
   let cursorBounded;
   if (isBackward) {
     if (before !== undefined) {
-      let cv = atob(before);
-      cursorBounded = sorted.filter(item => {
-        let d = compareValues(orderNumeric, getCursorValue(item), cv);
-        if (isDesc) {
-          return d > 0;
-        } else {
-          return d < 0;
-        }
-      });
+      let at = cursorPosition(before);
+      cursorBounded = sorted.filter(item => compare(positionIn(item), at) < 0);
     } else {
       cursorBounded = sorted;
     }
   } else if (after !== undefined) {
-    let cv$1 = atob(after);
-    cursorBounded = sorted.filter(item => {
-      let d = compareValues(orderNumeric, getCursorValue(item), cv$1);
-      if (isDesc) {
-        return d < 0;
-      } else {
-        return d > 0;
-      }
-    });
+    let at$1 = cursorPosition(after);
+    cursorBounded = sorted.filter(item => compare(positionIn(item), at$1) > 0);
   } else {
     cursorBounded = sorted;
   }
@@ -247,7 +300,7 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerSco
     ];
   }
   let hasMore$2 = match[1];
-  return buildConnection(match[0], isBackward ? true : hasMore$2, isBackward ? hasMore$2 : Stdlib_Option.isSome(after), getCursorValue);
+  return buildConnection(match[0], isBackward ? true : hasMore$2, isBackward ? hasMore$2 : Stdlib_Option.isSome(after), extra => cursorOf(orderByField, extra));
 }
 
 let defaultListPageSize = 50;
@@ -260,6 +313,12 @@ export {
   getFieldBool,
   getFieldString,
   compareValues,
+  getSortString,
+  positionOf,
+  encodePosition,
+  decodePosition,
+  comparePositions,
+  cursorOf,
   buildConnection,
   run,
 }

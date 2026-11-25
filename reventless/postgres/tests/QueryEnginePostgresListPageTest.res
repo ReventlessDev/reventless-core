@@ -177,7 +177,12 @@ switch processEnv->Dict.get("PG_URL") {
         [
           ("orderBy", orderBy("name", "DESC")),
           ("first", JSON.Encode.int(2)),
-          ("after", JSON.Encode.string(cur("Delta"))),
+          (
+            "after",
+            JSON.Encode.string(
+              ReventlessCore.QueryDbListQuery.encodePosition({value: Some("Delta"), id: "p-5"}),
+            ),
+          ),
         ],
       )
     )

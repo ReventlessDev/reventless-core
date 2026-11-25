@@ -556,7 +556,8 @@ let deriveServerCapability = (
   let seenSort: Set.t<string> = Set.make()
   let numeric: array<string> = []
   let reached: array<string> = []
-  let isNumberType = t => t == "Int" || t == "Float"
+  // A boolean orders as 0 and 1, the way SQLite renders it.
+  let isNumberType = t => t == "Int" || t == "Float" || t == "Boolean"
   let markNumeric = (name, gqlType) =>
     if isNumberType(gqlType) && !(numeric->Array.includes(name)) {
       numeric->Array.push(name)
@@ -569,10 +570,18 @@ let deriveServerCapability = (
       markNumeric(name, gqlType)
       filterFields->Array.push({name, gqlType, range})
     }
+  // An optional number sorts as a number too.
+  let rec present = (st: SchemaType.schemaType) =>
+    switch st {
+    | Nullable(inner) => present(inner)
+    | st => st
+    }
+  let sortScalarOf = name =>
+    fieldTypes->Dict.get(name)->Option.mapOr("String", st => scalarOfSchemaType(present(st)))
   let pushSort = name =>
     if !(seenSort->Set.has(name)) {
       seenSort->Set.add(name)
-      markNumeric(name, scalarOf(name))
+      markNumeric(name, sortScalarOf(name))
       sortFields->Array.push(name)
     }
 

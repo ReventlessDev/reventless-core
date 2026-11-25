@@ -294,11 +294,11 @@ function paginate(records, args) {
     ];
   }
   let hasMore$2 = match[1];
-  return QueryDbListQuery$ReventlessCore.buildConnection(match[0].map(recordJson), !isBackward && hasMore$2, isBackward && hasMore$2, item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d["position"]), Stdlib_JSON.Decode.string), ""));
+  return QueryDbListQuery$ReventlessCore.buildConnection(match[0].map(recordJson), !isBackward && hasMore$2, isBackward && hasMore$2, item => QueryDbListQuery$ReventlessCore.encodeCursor(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d["position"]), Stdlib_JSON.Decode.string), "")));
 }
 
 function emptyConnection() {
-  return QueryDbListQuery$ReventlessCore.buildConnection([], false, false, param => "");
+  return QueryDbListQuery$ReventlessCore.buildConnection([], false, false, param => QueryDbListQuery$ReventlessCore.encodeCursor(""));
 }
 
 function Make(Bus) {

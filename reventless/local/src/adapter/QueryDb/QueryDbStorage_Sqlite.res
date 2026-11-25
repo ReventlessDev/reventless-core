@@ -565,7 +565,6 @@ let makeStorage = (
       | Some(name) => rangeExpr(name)
       | None => idExpr
       }
-      let cursorExpr = orderExpr
       // Empty is absent, as it is in the spec: the host shell clears the opposite
       // cursor by setting it to "" rather than dropping it, and an empty cursor
       // pushed into SQL bounds the read on a decoded empty string.
@@ -574,19 +573,33 @@ let makeStorage = (
         ->Dict.get("after")
         ->Option.flatMap(JSON.Decode.string)
         ->Option.flatMap(c => c == "" ? None : Some(c))
-      switch afterCursor {
-      | Some(c) =>
-        whereParts->Array.push(`${cursorExpr} ${isDesc ? "<" : ">"} ?`)
-        params->Array.push(
-          switch orderByName {
-          | Some(name) => rangeParam(name, QueryDbListQuery.decodeCursor(c))
-          | None => JSON.Encode.string(QueryDbListQuery.decodeCursor(c))
-          },
-        )
-      | None => ()
+      // After the cursor's (value, id): rows without a value come last either way.
+      switch (afterCursor, orderByName) {
+      | (Some(c), Some(name)) =>
+        let at = QueryDbListQuery.decodePosition(c)
+        switch at.value {
+        | Some(v) =>
+          whereParts->Array.push(
+            `((${orderExpr} IS NOT NULL AND (${orderExpr} ${isDesc
+                ? "<"
+                : ">"} ? OR (${orderExpr} = ? AND ${idExpr} > ?))) OR ${orderExpr} IS NULL)`,
+          )
+          params->Array.pushMany([
+            rangeParam(name, v),
+            rangeParam(name, v),
+            JSON.Encode.string(at.id),
+          ])
+        | None =>
+          whereParts->Array.push(`(${orderExpr} IS NULL AND ${idExpr} > ?)`)
+          params->Array.push(JSON.Encode.string(at.id))
+        }
+      | (Some(c), None) =>
+        whereParts->Array.push(`${idExpr} > ?`)
+        params->Array.push(JSON.Encode.string(QueryDbListQuery.decodeCursor(c)))
+      | (None, _) => ()
       }
       let orderClause = switch orderByName {
-      | Some(_) => `${orderExpr} ${isDesc ? "DESC" : "ASC"}, ${idExpr} ASC`
+      | Some(_) => `${orderExpr} IS NULL, ${orderExpr} ${isDesc ? "DESC" : "ASC"}, ${idExpr} ASC`
       | None => `${idExpr} ASC`
       }
       let pageSize =
@@ -604,11 +617,6 @@ let makeStorage = (
         ->Array.map(rowToItem)
       let hasMore = rows->Array.length > pageSize
       let pageItems = rows->Array.slice(~start=0, ~end=pageSize)
-      let cursorField = orderByField->Option.getOr("id")
-      let cursorValueOf = item =>
-        QueryDbListQuery.getFieldString(item, cursorField)->Option.getOr(
-          QueryDbListQuery.getId(item),
-        )
       Some(
         QueryDbListQuery.buildConnection(
           ~pageItems,
@@ -617,7 +625,7 @@ let makeStorage = (
           // forward page reached by a cursor has one behind it. Hardcoding false
           // made Prev disappear on exactly the pages that have a previous one.
           ~hasPreviousPage=afterCursor->Option.isSome,
-          ~cursorValueOf,
+          ~cursorOf=QueryDbListQuery.cursorOf(~orderByField, ...),
         ),
       )
     }

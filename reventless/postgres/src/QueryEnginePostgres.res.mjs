@@ -218,7 +218,9 @@ function Make(P) {
     let stored = name => GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, name);
     let rangeExpr = name => {
       if (GraphQL_FragmentGenerator$ReventlessCore.isNumeric(capability, name)) {
-        return col(GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, name)) + `::numeric`;
+        let field = GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, name);
+        let raw = `item->'` + field.replaceAll("'", "''") + `'`;
+        return `(CASE WHEN jsonb_typeof(` + raw + `) = 'boolean' THEN (CASE WHEN ` + col(field) + `::boolean THEN 1 ELSE 0 END)::numeric ELSE ` + col(field) + `::numeric END)`;
       } else {
         return jsonTextC(GraphQL_FragmentGenerator$ReventlessCore.storedName(capability, name));
       }
@@ -258,15 +260,31 @@ function Make(P) {
       whereParts.push(col(orderByField) + ` IS NOT NULL`);
     }
     let orderExpr = orderByName !== undefined ? rangeExpr(orderByName) : idExprC;
-    let afterCursor = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
+    let afterCursor = Stdlib_Option.flatMap(Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string), c => {
+      if (c === "") {
+        return;
+      } else {
+        return c;
+      }
+    });
     if (afterCursor !== undefined) {
-      let cv = QueryDbListQuery$ReventlessCore.decodeCursor(afterCursor);
-      let cursorExpr = orderByField !== undefined && GraphQL_FragmentGenerator$ReventlessCore.isNumeric(capability, Stdlib_Option.getOr(orderByName, "")) && Stdlib_Option.isNone(Stdlib_Float.fromString(cv)) ? jsonTextC(orderByField) : orderExpr;
-      whereParts.push(cursorExpr + ` ` + (
-        isDesc ? "<" : ">"
-      ) + ` ` + param(b, orderByName !== undefined ? rangeParam(orderByName, cv) : cv));
+      if (orderByName !== undefined) {
+        let at = QueryDbListQuery$ReventlessCore.decodePosition(afterCursor);
+        let id = param(b, at.id);
+        let v = at.value;
+        if (v !== undefined) {
+          let value = param(b, rangeParam(orderByName, v));
+          whereParts.push(`((` + orderExpr + ` IS NOT NULL AND (` + orderExpr + ` ` + (
+            isDesc ? "<" : ">"
+          ) + ` ` + value + ` OR (` + orderExpr + ` = ` + value + ` AND ` + idExprC + ` > ` + id + `))) OR ` + orderExpr + ` IS NULL)`);
+        } else {
+          whereParts.push(`(` + orderExpr + ` IS NULL AND ` + idExprC + ` > ` + id + `)`);
+        }
+      } else {
+        whereParts.push(idExprC + ` > ` + param(b, QueryDbListQuery$ReventlessCore.decodeCursor(afterCursor)));
+      }
     }
-    let orderClause = orderByName !== undefined ? orderExpr + ` ` + (
+    let orderClause = orderByName !== undefined ? orderExpr + ` IS NULL, ` + orderExpr + ` ` + (
         isDesc ? "DESC" : "ASC"
       ) + `, ` + idExprC + ` ASC` : idExprC + ` ASC`;
     let pageSize = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0), QueryDbListQuery$ReventlessCore.defaultListPageSize);
@@ -274,9 +292,7 @@ function Make(P) {
     let rows = (await PgDriver$ReventlessPostgres.query(P.pool, sql, b.params)).map(extra => decodeRow(true, extra));
     let hasMore = rows.length > pageSize;
     let pageItems = rows.slice(0, pageSize);
-    let cursorField = Stdlib_Option.getOr(orderByField, "id");
-    let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessCore.getFieldString(item, cursorField), QueryDbListQuery$ReventlessCore.getId(item));
-    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, Stdlib_Option.isSome(afterCursor), cursorValueOf);
+    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, Stdlib_Option.isSome(afterCursor), extra => QueryDbListQuery$ReventlessCore.cursorOf(orderByField, extra));
   };
   let itemsPage = async (readModelName, param$1, id, argsDict, ownerScope, retiredScope) => {
     let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);

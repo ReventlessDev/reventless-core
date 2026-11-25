@@ -260,12 +260,13 @@ let paginate = (~records: array<record>, ~args: JSON.t): JSON.t => {
     ~pageItems=pageItems->Array.map(recordJson),
     ~hasNextPage=!isBackward && hasMore,
     ~hasPreviousPage=isBackward && hasMore,
-    ~cursorValueOf=item =>
+    ~cursorOf=item =>
       item
       ->JSON.Decode.object
       ->Option.flatMap(d => d->Dict.get("position"))
       ->Option.flatMap(JSON.Decode.string)
-      ->Option.getOr(""),
+      ->Option.getOr("")
+      ->QueryDbListQuery.encodeCursor,
   )
 }
 
@@ -274,7 +275,7 @@ let emptyConnection = () =>
     ~pageItems=[],
     ~hasNextPage=false,
     ~hasPreviousPage=false,
-    ~cursorValueOf=_ => "",
+    ~cursorOf=_ => QueryDbListQuery.encodeCursor(""),
   )
 
 module Make = (Bus: LocalBus.T) => {

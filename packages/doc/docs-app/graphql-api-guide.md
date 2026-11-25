@@ -490,6 +490,8 @@ ids: [ID!]
 
 **`<Type>OrderField` depends on the store that holds the read model.** DynamoDB orders by its keys and indexes, so there the enum lists the annotated fields above. The local platform's in-memory and SQLite stores and Postgres order by any field, so there the enum also lists every plain field of the state (text, numbers, booleans, dates, enums), after the annotated ones; lists, objects, `@hidden` fields and personal fields are left out. The SDL describes the deployment, so a client that pins it pins it per deployment.
 
+An ordered list pages in one order on every store: by the field in the direction asked, rows without a value last in both directions, ties by id. Its cursors are opaque; pass back the one a page returned.
+
 ## 8. Cross-table references and labels
 
 | Annotation                                                         | Effect on SDL                                                                                                              |

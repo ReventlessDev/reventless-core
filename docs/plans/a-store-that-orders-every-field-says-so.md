@@ -1,6 +1,6 @@
 # Plan: a store that orders every field says so
 
-> **Status:** 🔨 In progress. [OES1](#4-steps) and [OES2](#4-steps) built 2026-11-25, with their part
+> **Status:** 🔨 In progress. [OES1](#4-steps) to [OES3](#4-steps) built 2026-11-25, with their part
 > of [OES5](#4-steps) (see each *As built*). Written 2026-11-23.
 >
 > **Questions and short answers:**
@@ -132,6 +132,17 @@ Postgres and SQLite; in-memory already breaks ties by id and is checked to treat
 same way.
 *Done when* the parity suite pages a read model by a field with repeated and missing values, in
 both directions, across page edges, and every store returns each row once in the same order.
+
+*As built (2026-11-25):* the cursor of an ordered list is `[value, id]` as JSON in base64
+(`QueryDbListQuery.encodePosition`), and `comparePositions` is the one order: value in the
+direction asked, rows without one last, ties by id. The spec, the SQLite push-down and the Postgres
+engine page after the pair; SQLite and Postgres still leave backward pages to the spec. Two
+things the suite found on the way: an optional number sorted as text (`"10"` before `"9"`), since
+the numeric check did not look through the optional wrapper, and a boolean had no sort value in
+the spec while SQLite read it as 1 and Postgres as `true`. A sorted boolean is now numeric and
+orders as 0 and 1 on all three. `QueryDbListPagingParityTest` (spec, SQLite) and
+`QueryEnginePostgresPagingTest` page rank, qty and done both ways; the Postgres suites ran
+against the `docker-compose.postgres.yml` sidecar.
 
 **OES4 The schema says which fields the server orders.** Waits for [OES2](#4-steps).
 `x-reventless-orders` on the published read model schema, from the capability of the read model's

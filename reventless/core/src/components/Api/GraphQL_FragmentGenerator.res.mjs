@@ -449,10 +449,10 @@ function deriveServerCapability(ordering, entityName, schema) {
   let numeric = [];
   let reached = [];
   let isNumberType = t => {
-    if (t === "Int") {
+    if (t === "Int" || t === "Float") {
       return true;
     } else {
-      return t === "Float";
+      return t === "Boolean";
     }
   };
   let markNumeric = (name, gqlType) => {
@@ -474,10 +474,24 @@ function deriveServerCapability(ordering, entityName, schema) {
       range: range
     });
   };
+  let present = _st => {
+    while (true) {
+      let st = _st;
+      if (typeof st !== "object") {
+        return st;
+      }
+      if (st.TAG !== "Nullable") {
+        return st;
+      }
+      _st = st._0;
+      continue;
+    };
+  };
+  let sortScalarOf = name => Stdlib_Option.mapOr(fieldTypes[name], "String", st => scalarOfSchemaType(present(st)));
   let pushSort = name => {
     if (!seenSort.has(name)) {
       seenSort.add(name);
-      markNumeric(name, scalarOf(name));
+      markNumeric(name, sortScalarOf(name));
       sortFields.push(name);
       return;
     }

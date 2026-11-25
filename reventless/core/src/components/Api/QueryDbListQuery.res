@@ -65,23 +65,93 @@ let compareValues = (~numeric: bool, a: string, b: string): int =>
   | _ => a < b ? -1 : a > b ? 1 : 0
   }
 
+/** A field's value as a list orders by it: `getFieldString`, with a boolean as `"0"` or `"1"`
+    (the capability marks a sorted boolean numeric). */
+let getSortString = (item: JSON.t, field: string): option<string> =>
+  switch getFieldBool(item, field) {
+  | Some(b) => Some(b ? "1" : "0")
+  | None => getFieldString(item, field)
+  }
+
+/** Where a row sits in a list ordered by a field: its value (`None` when it has none) and its id. */
+type position = {value: option<string>, id: string}
+
+let positionOf = (item: JSON.t, ~field: string): position => {
+  value: getSortString(item, field),
+  id: getId(item),
+}
+
+@val external encodeURIComponent: string => string = "encodeURIComponent"
+@val external decodeURIComponent: string => string = "decodeURIComponent"
+@val external escape: string => string = "escape"
+@val external unescape: string => string = "unescape"
+
+/** An ordered list's cursor: the value and the id, as UTF-8 JSON in base64. */
+let encodePosition = (p: position): string =>
+  btoa(
+    unescape(
+      encodeURIComponent(
+        JSON.stringify(
+          JSON.Encode.array([
+            p.value->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
+            JSON.Encode.string(p.id),
+          ]),
+        ),
+      ),
+    ),
+  )
+
+/** The position a cursor names. A cursor that holds a value alone, as one minted before cursors
+    carried the id, is read as that value with no id. */
+let decodePosition = (cursor: string): position => {
+  let raw = atob(cursor)
+  let pair = try {
+    switch JSON.parseOrThrow(decodeURIComponent(escape(raw)))->JSON.Decode.array {
+    | Some([value, id]) =>
+      id->JSON.Decode.string->Option.map(id => {value: value->JSON.Decode.string, id})
+    | _ => None
+    }
+  } catch {
+  | _ => None
+  }
+  pair->Option.getOr({value: Some(raw), id: ""})
+}
+
+/** The order of two positions: by value in the direction asked, rows without one last either
+    way, then by id. */
+let comparePositions = (~numeric: bool, ~isDesc: bool, a: position, b: position): int => {
+  let byId = a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+  switch (a.value, b.value) {
+  | (Some(av), Some(bv)) =>
+    let primary = compareValues(~numeric, av, bv)
+    switch isDesc ? -primary : primary {
+    | 0 => byId
+    | p => p
+    }
+  | (Some(_), None) => -1
+  | (None, Some(_)) => 1
+  | (None, None) => byId
+  }
+}
+
+/** The cursor of a row: its position in a list ordered by `orderByField`, else its id. */
+let cursorOf = (~orderByField: option<string>, item: JSON.t): string =>
+  switch orderByField {
+  | Some(field) => encodePosition(positionOf(item, ~field))
+  | None => encodeCursor(getId(item))
+  }
+
 // Build the Relay connection object from an already-ordered page. Shared by
 // `run` and the SQLite push-down so edges / cursors / pageInfo have one shape.
 let buildConnection = (
   ~pageItems: array<JSON.t>,
   ~hasNextPage: bool,
   ~hasPreviousPage: bool,
-  ~cursorValueOf: JSON.t => string,
+  ~cursorOf: JSON.t => string,
 ): JSON.t => {
-  let edges =
-    pageItems->Array.map(item =>
-      Obj.magic({"node": item, "cursor": encodeCursor(cursorValueOf(item))})
-    )
-  let startCursor = pageItems->Array.get(0)->Option.map(item => encodeCursor(cursorValueOf(item)))
-  let endCursor =
-    pageItems
-    ->Array.get(pageItems->Array.length - 1)
-    ->Option.map(item => encodeCursor(cursorValueOf(item)))
+  let edges = pageItems->Array.map(item => Obj.magic({"node": item, "cursor": cursorOf(item)}))
+  let startCursor = pageItems->Array.get(0)->Option.map(cursorOf)
+  let endCursor = pageItems->Array.get(pageItems->Array.length - 1)->Option.map(cursorOf)
   Obj.magic({
     "edges": edges,
     "pageInfo": {
@@ -245,41 +315,15 @@ let run = (
     ->Option.flatMap(JSON.Decode.string)
     ->Option.getOr("ASC")
   let isDesc = direction == "DESC"
-  let sorted = switch orderByField {
-  | Some(f) =>
-    let cmp = (a, b) => {
-      let av = getFieldString(a, f)->Option.getOr("")
-      let bv = getFieldString(b, f)->Option.getOr("")
-      let primary = compareValues(~numeric=orderNumeric, av, bv)
-      let primary = isDesc ? -primary : primary
-      if primary != 0 {
-        primary
-      } else {
-        let aid = getId(a)
-        let bid = getId(b)
-        if aid < bid {
-          -1
-        } else if aid > bid {
-          1
-        } else {
-          0
-        }
-      }
+  // Without an order, by id: a position with no value compares by id alone.
+  let positionIn = item =>
+    switch orderByField {
+    | Some(field) => positionOf(item, ~field)
+    | None => {value: None, id: getId(item)}
     }
-    filtered->Array.toSorted((a, b) => cmp(a, b)->Int.toFloat)
-  | None =>
-    filtered->Array.toSorted((a, b) => {
-      let aid = getId(a)
-      let bid = getId(b)
-      if aid < bid {
-        -1.
-      } else if aid > bid {
-        1.
-      } else {
-        0.
-      }
-    })
-  }
+  let compare = comparePositions(~numeric=orderNumeric, ~isDesc, ...)
+  let sorted =
+    filtered->Array.toSorted((a, b) => compare(positionIn(a), positionIn(b))->Int.toFloat)
 
   let first =
     argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
@@ -299,22 +343,18 @@ let run = (
   // sends `before` alone — and keying on `last` made that a FORWARD read bounded
   // by nothing, which answers page one and calls it the previous page.
   let isBackward = last->Option.isSome || before->Option.isSome
-  let cursorField = orderByField->Option.getOr("id")
-  let getCursorValue = item => getFieldString(item, cursorField)->Option.getOr(getId(item))
-
+  let cursorPosition = c =>
+    switch orderByField {
+    | Some(_) => decodePosition(c)
+    | None => {value: None, id: decodeCursor(c)}
+    }
   let cursorBounded = switch (isBackward, after, before) {
   | (false, Some(c), _) =>
-    let cv = decodeCursor(c)
-    sorted->Array.filter(item => {
-      let d = compareValues(~numeric=orderNumeric, getCursorValue(item), cv)
-      isDesc ? d < 0 : d > 0
-    })
+    let at = cursorPosition(c)
+    sorted->Array.filter(item => compare(positionIn(item), at) > 0)
   | (true, _, Some(c)) =>
-    let cv = decodeCursor(c)
-    sorted->Array.filter(item => {
-      let d = compareValues(~numeric=orderNumeric, getCursorValue(item), cv)
-      isDesc ? d > 0 : d < 0
-    })
+    let at = cursorPosition(c)
+    sorted->Array.filter(item => compare(positionIn(item), at) < 0)
   | _ => sorted
   }
 
@@ -353,6 +393,6 @@ let run = (
     ~pageItems,
     ~hasNextPage=isBackward ? true : hasMore,
     ~hasPreviousPage=isBackward ? hasMore : after->Option.isSome,
-    ~cursorValueOf=getCursorValue,
+    ~cursorOf=cursorOf(~orderByField, ...),
   )
 }

@@ -138,7 +138,7 @@ let emptyConnection = (): JSON.t =>
     ~pageItems=[],
     ~hasNextPage=false,
     ~hasPreviousPage=false,
-    ~cursorValueOf=_ => "",
+    ~cursorOf=_ => ReventlessCore.QueryDbListQuery.encodeCursor(""),
   )
 
 // Spec-level authorization then the (optional) user interceptor — mirrors
