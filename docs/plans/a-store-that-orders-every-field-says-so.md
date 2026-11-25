@@ -1,7 +1,8 @@
 # Plan: a store that orders every field says so
 
-> **Status:** 🔨 In progress. [OES1](#4-steps) to [OES4](#4-steps) built 2026-11-25, with their part
-> of [OES5](#4-steps) (see each *As built*). Written 2026-11-23.
+> **Status:** 🔨 In progress. [OES1](#4-steps) to [OES5](#4-steps) built 2026-11-25 (see each *As built*);
+> [OES6](#4-steps) seen on SQLite, its Postgres half waits for a stack that serves the shop's
+> read models from Postgres. Written 2026-11-23.
 >
 > **Questions and short answers:**
 >
@@ -172,6 +173,21 @@ says a list sorts by any field and what that costs.
 the local platform (SQLite) and on the Postgres compose stack: sorted by a field no annotation
 names, paged past the first page in both directions, and the schema's list read back.
 *Done when* each is seen and noted here.
+
+*Seen on SQLite (2026-11-25):* the shop on the local platform with a fresh SQLite store, seeded
+with the full set and four rounds of the next one (220 orders). `Ordering_OrderOrderField` lists
+every plain field of Orders; sorted by `itemCount` DESC and by `firstProductName` ASC, 25 to a
+page, the list came back in 9 pages each way, every order once, in order, and the same both ways.
+`x-reventless-orders` on the served Orders schema (`Platform_ComponentDefinitions`) holds the same
+20 names as the enum.
+
+*The Postgres half waits.* Locally read models stay in memory under the Postgres backend, and the
+k8s shop does not deploy yet, so only an AWS stack with a Postgres selection serves the shop's
+read models from Postgres. The engine itself pages the same way: `QueryEnginePostgresPagingTest`
+and the list parity suite pass against the `docker-compose.postgres.yml` sidecar.
+
+Seen on the way, not this plan's: `Platform_Plugins { structure }` fails on the local platform,
+where the structure is stored offloaded and the field answers the pointer instead of the JSON.
 
 ## 5. Out of scope
 
