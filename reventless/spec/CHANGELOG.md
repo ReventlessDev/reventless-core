@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.217 (2026-11-25)
+
+### Bug Fixes
+
+* **dcb:** a code presented to a decision finds the event its tag records ([45f0d87](https://github.com/ReventlessDev/reventless-core/commit/45f0d87d9ef4df760409468819d81052e28cf0d5))
+
+
 # 3.0.0-alpha.216 (2026-11-24)
 
 ### Features
