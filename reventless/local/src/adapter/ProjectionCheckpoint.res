@@ -353,6 +353,84 @@ let runCatchup = async (
 // Output.apply chains resolve and register their collector handlers (the same
 // ~2-tick settling connectPlugin relies on), then snapshots the registry and
 // catches up.
+//
+// A read model whose shape changed since its rows were written (a field added, a type changed)
+// is projected again from its events: its rows are dropped and its checkpoints removed, so the
+// catch-up delivers its whole history into rows of the new shape. Rows of the old shape lack
+// what the new one requires, and a query that reads them fails. The shape kept is the state
+// schema's description, as an aggregate snapshot keeps its schema's hash.
+let ensureShapeSchema = (db: SqliteDriver.t) =>
+  db->SqliteDriver.exec(
+    "CREATE TABLE IF NOT EXISTS read_model_shape (read_model TEXT NOT NULL PRIMARY KEY, shape TEXT NOT NULL)",
+  )
+
+// The read model a projection collector feeds, by the name its state schema is registered under:
+// `SessionsEventColl` feeds `Sessions`, `CustomersReadModelEventColl` feeds `CustomersReadModel`
+// or `Customers`.
+let readModelOf = (collector: string): option<string> => {
+  let base =
+    collector->String.endsWith("EventColl")
+      ? collector->String.slice(
+          ~start=0,
+          ~end=String.length(collector) - String.length("EventColl"),
+        )
+      : collector
+  let bare =
+    base->String.endsWith("ReadModel")
+      ? base->String.slice(~start=0, ~end=String.length(base) - String.length("ReadModel"))
+      : base
+  [base, bare]->Array.find(n => Plugin_Helpers.stateSchemaRegistry->Dict.get(n)->Option.isSome)
+}
+
+let reshape = (db: SqliteDriver.t, ~collectors: array<string>) => {
+  ensureSchema(db)
+  ensureShapeSchema(db)
+  collectors->Array.forEach(collector =>
+    switch readModelOf(collector) {
+    | None => ()
+    | Some(readModel) =>
+      let shape =
+        Plugin_Helpers.stateSchemaRegistry
+        ->Dict.get(readModel)
+        ->Option.mapOr("", SchemaWalker.describeSchema)
+      let kept =
+        db
+        ->SqliteDriver.prepare("SELECT shape FROM read_model_shape WHERE read_model = ?")
+        ->SqliteDriver.get([JSON.Encode.string(readModel)])
+        ->Option.flatMap(row => row->Dict.get("shape"))
+      switch kept {
+      | Some(String(before)) if before != shape =>
+        let table = "qdb_" ++ readModel->String.replaceAll("-", "_")
+        let exists =
+          db
+          ->SqliteDriver.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?")
+          ->SqliteDriver.get([JSON.Encode.string(table)])
+          ->Option.isSome
+        if exists {
+          db->SqliteDriver.exec(`DELETE FROM ${table}`)
+        }
+        [rowKey(Aggregate, collector), rowKey(Dcb, collector)]->Array.forEach(key =>
+          db
+          ->SqliteDriver.prepare("DELETE FROM projection_checkpoint WHERE read_model = ?")
+          ->SqliteDriver.run([JSON.Encode.string(key)])
+          ->ignore
+        )
+        EffectLogger.logInfo(
+          ~comp,
+          `${readModel}: its shape changed since its rows were written; projected again from its events`,
+        )->Effect.runSync
+      | _ => ()
+      }
+      db
+      ->SqliteDriver.prepare(
+        "INSERT INTO read_model_shape(read_model, shape) VALUES(?,?) ON CONFLICT(read_model) DO UPDATE SET shape = excluded.shape",
+      )
+      ->SqliteDriver.run([JSON.Encode.string(readModel), JSON.Encode.string(shape)])
+      ->ignore
+    }
+  )
+}
+
 let startupCatchup = async (
   ~db: SqliteDriver.t,
   ~upperBound: int,
@@ -362,5 +440,7 @@ let startupCatchup = async (
   await Promise.make((resolve, _) => {
     let _ = setTimeout(() => resolve(), 0)
   })
-  await runCatchup(~db, ~upperBound, ~dcbUpperBound, ~handlers=handlers())
+  let handlers = handlers()
+  reshape(db, ~collectors=handlers->Array.map(((name, _)) => name))
+  await runCatchup(~db, ~upperBound, ~dcbUpperBound, ~handlers)
 }

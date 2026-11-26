@@ -6,7 +6,9 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
+import * as SchemaWalker$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/SchemaWalker.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "./SqliteDriver.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as ProjectionPending$ReventlessLocal from "./ProjectionPending.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
@@ -305,11 +307,57 @@ async function runCatchup(db, upperBound, dcbUpperBound, handlers) {
   });
 }
 
+function ensureShapeSchema(db) {
+  SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS read_model_shape (read_model TEXT NOT NULL PRIMARY KEY, shape TEXT NOT NULL)");
+}
+
+function readModelOf(collector) {
+  let base = collector.endsWith("EventColl") ? collector.slice(0, collector.length - "EventColl".length | 0) : collector;
+  let bare = base.endsWith("ReadModel") ? base.slice(0, base.length - "ReadModel".length | 0) : base;
+  return [
+    base,
+    bare
+  ].find(n => Stdlib_Option.isSome(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[n]));
+}
+
+function reshape(db, collectors) {
+  SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS projection_checkpoint (read_model TEXT NOT NULL PRIMARY KEY, position INTEGER NOT NULL)");
+  SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS read_model_shape (read_model TEXT NOT NULL PRIMARY KEY, shape TEXT NOT NULL)");
+  collectors.forEach(collector => {
+    let readModel = readModelOf(collector);
+    if (readModel === undefined) {
+      return;
+    }
+    let shape = Stdlib_Option.mapOr(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[readModel], "", SchemaWalker$ReventlessCore.describeSchema);
+    let kept = Stdlib_Option.flatMap(SqliteDriver$ReventlessLocal.get(SqliteDriver$ReventlessLocal.prepare(db, "SELECT shape FROM read_model_shape WHERE read_model = ?"), [readModel]), row => row["shape"]);
+    if (typeof kept === "string" && kept !== shape) {
+      let table = "qdb_" + readModel.replaceAll("-", "_");
+      let exists = Stdlib_Option.isSome(SqliteDriver$ReventlessLocal.get(SqliteDriver$ReventlessLocal.prepare(db, "SELECT name FROM sqlite_master WHERE type='table' AND name = ?"), [table]));
+      if (exists) {
+        SqliteDriver$ReventlessLocal.exec(db, `DELETE FROM ` + table);
+      }
+      [
+        collector,
+        "dcb:" + collector
+      ].forEach(key => {
+        SqliteDriver$ReventlessLocal.run(SqliteDriver$ReventlessLocal.prepare(db, "DELETE FROM projection_checkpoint WHERE read_model = ?"), [key]);
+      });
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, undefined, readModel + `: its shape changed since its rows were written; projected again from its events`));
+    }
+    SqliteDriver$ReventlessLocal.run(SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO read_model_shape(read_model, shape) VALUES(?,?) ON CONFLICT(read_model) DO UPDATE SET shape = excluded.shape"), [
+      readModel,
+      shape
+    ]);
+  });
+}
+
 async function startupCatchup(db, upperBound, dcbUpperBound, handlers) {
   await new Promise((resolve, param) => {
     setTimeout(() => resolve(), 0);
   });
-  return await runCatchup(db, upperBound, dcbUpperBound, handlers());
+  let handlers$1 = handlers();
+  reshape(db, handlers$1.map(param => param[0]));
+  return await runCatchup(db, upperBound, dcbUpperBound, handlers$1);
 }
 
 export {
@@ -328,6 +376,9 @@ export {
   dcbCatchupEnvelope,
   missedRows,
   runCatchup,
+  ensureShapeSchema,
+  readModelOf,
+  reshape,
   startupCatchup,
 }
 /* Effect Not a pure module */

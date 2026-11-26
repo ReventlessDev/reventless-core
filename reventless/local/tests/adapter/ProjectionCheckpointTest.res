@@ -475,3 +475,58 @@ describe("ProjectionCheckpoint", () => {
     )
   })
 })
+
+// A read model whose shape changed since its rows were written is projected again from its
+// events: its rows are dropped and its checkpoints removed. The first start only keeps the shape.
+describe("ProjectionCheckpoint.reshape", () => {
+  let rows = db =>
+    db
+    ->SqliteDriver.prepare("SELECT COUNT(*) AS n FROM qdb_ShapeRM")
+    ->SqliteDriver.get([])
+    ->Option.flatMap(r => r->Dict.get("n"))
+  let registered = schema =>
+    ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.set("ShapeRM", schema->S.castToUnknown)
+
+  testSync("keeps rows of an unchanged shape, and drops those of a changed one", () => {
+    let db = makeFreshDb()
+    db->SqliteDriver.exec(
+      "CREATE TABLE qdb_ShapeRM (partition_key TEXT NOT NULL, sub_key TEXT NOT NULL DEFAULT '', item TEXT NOT NULL, expires_at INTEGER, PRIMARY KEY (partition_key, sub_key))",
+    )
+    db->SqliteDriver.exec(`INSERT INTO qdb_ShapeRM(partition_key, item) VALUES('s-1', '{"id":"s-1"}')`)
+    ProjectionCheckpoint.setPosition(db, "ShapeRMEventColl", 5)
+    ProjectionCheckpoint.setPosition(db, "dcb:ShapeRMEventColl", 7)
+
+    registered(S.object(s => s.field("id", S.string)))
+    ProjectionCheckpoint.reshape(db, ~collectors=["ShapeRMEventColl"])
+    ProjectionCheckpoint.reshape(db, ~collectors=["ShapeRMEventColl"])
+    expect((rows(db), ProjectionCheckpoint.getPosition(db, "ShapeRMEventColl")))->toEqual((
+      Some(JSON.Number(1.)),
+      5,
+    ))
+
+    // A field more: the rows are dropped and both axes start from the first event.
+    registered(S.object(s => (s.field("id", S.string), s.field("state", S.string))))
+    ProjectionCheckpoint.reshape(db, ~collectors=["ShapeRMEventColl"])
+    expect((
+      rows(db),
+      ProjectionCheckpoint.getPosition(db, "ShapeRMEventColl"),
+      ProjectionCheckpoint.getPosition(db, "dcb:ShapeRMEventColl"),
+    ))->toEqual((Some(JSON.Number(0.)), 0, 0))
+    ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.delete("ShapeRM")
+  })
+})
+
+// Two systems' read models of one name: one local platform would keep them as one.
+describe("LocalQueryDbStorage.sharedNameProblem", () => {
+  testSync("refuses a name another system made, and not the same system again", () => {
+    LocalQueryDbStorage.madeBy->Dict.set("SharedRM", "Charging")
+    expect((
+      LocalQueryDbStorage.sharedNameProblem(~name="SharedRM", ~plugin=Some("Charging")),
+      LocalQueryDbStorage.sharedNameProblem(
+        ~name="SharedRM",
+        ~plugin=Some("Flexibility"),
+      )->Option.isSome,
+    ))->toEqual((None, true))
+    LocalQueryDbStorage.madeBy->Dict.delete("SharedRM")
+  })
+})
