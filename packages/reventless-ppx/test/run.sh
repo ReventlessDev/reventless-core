@@ -4684,6 +4684,48 @@ describe("Lines", () => {
   )
 })
 EOF
+# The timed event verbs: each event paired with the time it is recorded at.
+# `givenEventsAt` writes `(event, time)`; the multi-source DSL writes `(time,
+# event)`. test/golden holds the sidecar, less its machine-local `file`.
+cat > "$SIDECARS/src/Readings_GWT.res" <<'EOF'
+type event =
+  | MeterRead({meterId: string, kwh: float})
+  | MeterReset({meterId: string})
+@schema
+type row = {meterId: string, kwh: float}
+let describe = (_: string, f: unit => unit) => f()
+let test = (_: string, f: unit => unit) => f()
+let givenEventsAt = (_: array<(event, string)>) => ()
+let givenEventsWithTime = (_: array<(string, event)>) => ()
+let whenEvents = ((), _: array<event>) => ()
+let whenEventWithTime = ((), _: string, _: event) => ()
+let whenEventsWithTime = ((), _: array<(string, event)>) => ()
+let thenState = ((), _: row) => ()
+
+describe("Readings", () => {
+  test("events given at their times, nothing more happens", () =>
+    givenEventsAt([
+      (MeterRead({meterId: "m-1", kwh: 1.5}), "2026-01-05T09:00:00Z"),
+      (MeterRead({meterId: "m-1", kwh: 2.0}), "2026-01-05T10:00:00Z"),
+    ])
+    ->whenEvents([])
+    ->thenState({meterId: "m-1", kwh: 3.5})
+  )
+  test("time first, then one event at its time", () =>
+    givenEventsWithTime([("2026-01-05T09:00:00Z", MeterRead({meterId: "m-1", kwh: 1.5}))])
+    ->whenEventWithTime("2026-01-05T11:00:00Z", MeterReset({meterId: "m-1"}))
+    ->thenState({meterId: "m-1", kwh: 0.0})
+  )
+  test("several events at their times", () =>
+    givenEventsWithTime([])
+    ->whenEventsWithTime([
+      ("2026-01-05T09:00:00Z", MeterRead({meterId: "m-1", kwh: 1.5})),
+      ("2026-01-05T11:00:00Z", MeterReset({meterId: "m-1"})),
+    ])
+    ->thenState({meterId: "m-1", kwh: 0.0})
+  )
+})
+EOF
 
 echo ""
 echo "Compiling sidecar package..."
@@ -4718,13 +4760,23 @@ assert_js_contains "$GJ" '"of": "Event"' "an opaque step says which kind it stan
 assert_js_contains "$GJ" '"element": "seeded"' "an opaque step is named by its source text"
 
 echo ""
+echo "=== Test: the GWT sidecar reads the timed event verbs ==="
+if diff <(grep -v '"file":' "$SIDECARS/src/Readings_GWT.gwt.json") \
+     "$PPX_DIR/test/golden/Readings_GWT.gwt.golden.json"; then
+  pass "events given or acted on at their times are the scenario's given and when"
+else
+  fail "timed verbs" "Readings_GWT.gwt.json differs from test/golden"
+fi
+
+echo ""
 echo "=== Test: a module of shared @schema types gets a types sidecar ==="
 TJ="$SIDECARS/src/DeliveryOption.types.json"
 assert_js_contains "$TJ" '"module": "DeliveryOption"' "module is the file stem"
 assert_js_contains "$TJ" '"typeName": "t"' "the type is recorded"
 assert_js_contains "$TJ" '"name": "storeId"' "an inline-record payload carries its fields"
 if [ -e "$SIDECARS/src/Money.types.json" ] || [ -e "$SIDECARS/src/OrderingExamples.types.json" ] \
-   || [ -e "$SIDECARS/src/Lines_GWT.types.json" ]; then
+   || [ -e "$SIDECARS/src/Lines_GWT.types.json" ] \
+   || [ -e "$SIDECARS/src/Readings_GWT.types.json" ]; then
   fail "types sidecar" "written for a module with no @schema type, an examples file or a GWT file"
 else
   pass "no types sidecar without a @schema type, for an examples file or a GWT file"

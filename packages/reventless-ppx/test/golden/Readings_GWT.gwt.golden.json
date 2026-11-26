@@ -1,0 +1,194 @@
+{
+  "specName": "Readings",
+  "stem": "Readings_GWT",
+  "componentKind": null,
+  "scenarios": [
+    {
+      "scenarioId": "",
+      "specId": "",
+      "title": "events given at their times, nothing more happens",
+      "given": [
+        {
+          "kind": "Event",
+          "element": "MeterRead",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 1.5 } ]
+          ]
+        },
+        {
+          "kind": "Event",
+          "element": "MeterRead",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 2.0 } ]
+          ]
+        }
+      ],
+      "when": [],
+      "then": [
+        {
+          "kind": "State",
+          "element": "state",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 3.5 } ]
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "group": "given",
+          "verb": "givenEventsAt",
+          "kind": "Event",
+          "element": "MeterRead",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 1.5 } ]
+          ]
+        },
+        {
+          "group": "given",
+          "verb": "givenEventsAt",
+          "kind": "Event",
+          "element": "MeterRead",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 2.0 } ]
+          ]
+        },
+        {
+          "group": "then",
+          "verb": "thenState",
+          "kind": "State",
+          "element": "state",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 3.5 } ]
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioId": "",
+      "specId": "",
+      "title": "time first, then one event at its time",
+      "given": [
+        {
+          "kind": "Event",
+          "element": "MeterRead",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 1.5 } ]
+          ]
+        }
+      ],
+      "when": [
+        {
+          "kind": "Event",
+          "element": "MeterReset",
+          "values": [ [ "meterId", { "kind": "string", "value": "m-1" } ] ]
+        }
+      ],
+      "then": [
+        {
+          "kind": "State",
+          "element": "state",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 0.0 } ]
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "group": "given",
+          "verb": "givenEventsWithTime",
+          "kind": "Event",
+          "element": "MeterRead",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 1.5 } ]
+          ]
+        },
+        {
+          "group": "when",
+          "verb": "whenEventWithTime",
+          "kind": "Event",
+          "element": "MeterReset",
+          "values": [ [ "meterId", { "kind": "string", "value": "m-1" } ] ]
+        },
+        {
+          "group": "then",
+          "verb": "thenState",
+          "kind": "State",
+          "element": "state",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 0.0 } ]
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioId": "",
+      "specId": "",
+      "title": "several events at their times",
+      "given": [],
+      "when": [
+        {
+          "kind": "Event",
+          "element": "MeterRead",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 1.5 } ]
+          ]
+        },
+        {
+          "kind": "Event",
+          "element": "MeterReset",
+          "values": [ [ "meterId", { "kind": "string", "value": "m-1" } ] ]
+        }
+      ],
+      "then": [
+        {
+          "kind": "State",
+          "element": "state",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 0.0 } ]
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "group": "when",
+          "verb": "whenEventsWithTime",
+          "kind": "Event",
+          "element": "MeterRead",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 1.5 } ]
+          ]
+        },
+        {
+          "group": "when",
+          "verb": "whenEventsWithTime",
+          "kind": "Event",
+          "element": "MeterReset",
+          "values": [ [ "meterId", { "kind": "string", "value": "m-1" } ] ]
+        },
+        {
+          "group": "then",
+          "verb": "thenState",
+          "kind": "State",
+          "element": "state",
+          "values": [
+            [ "meterId", { "kind": "string", "value": "m-1" } ],
+            [ "kwh", { "kind": "float", "value": 0.0 } ]
+          ]
+        }
+      ]
+    }
+  ]
+}

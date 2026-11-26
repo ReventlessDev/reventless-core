@@ -799,8 +799,9 @@ let element_of_constructor ?src (e : expression) :
 (* The verbs the scenario walk records. A verb not listed is still a step to
    the ordered walk below (it keeps the chain together) but records nothing. *)
 let step_names =
-  [ "givenEvents"; "givenEvent"; "givenTodo"; "givenCapabilities";
-    "whenCmd"; "whenCommand"; "whenInput"; "whenReceived"; "whenEvent"; "whenEvents";
+  [ "givenEvents"; "givenEvent"; "givenEventsAt"; "givenEventsWithTime"; "givenTodo";
+    "givenCapabilities"; "whenCmd"; "whenCommand"; "whenInput"; "whenReceived"; "whenEvent";
+    "whenEvents"; "whenEventWithTime"; "whenEventsWithTime";
     "whenCollect"; "whenResolve"; "whenSweep"; "whenReacts"; "whenPublished";
     "whenProcess"; "whenTranslated"; "whenTranslateMocked";
     "whenTranslateRetrying"; "whenExhausted"; "andThenEvents";
@@ -1037,6 +1038,11 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
   let mk ?(grouped = true) group entries =
     Some { group; verb; via = step_via lid; grouped; entries; number; labels; at; caller = None }
   in
+  let timed_event ~event_first (e : expression) =
+    match e.pexp_desc with
+    | Pexp_tuple [ a; b ] -> ctor_entry ?src ~kind:StepKind.Event (if event_first then a else b)
+    | _ -> ctor_entry ?src ~kind:StepKind.Event e
+  in
   let input p =
     match element_of_constructor ?src p with
     | Some (element, values) -> [ entry ~kind:StepKind.Input ~element ~values () ]
@@ -1047,6 +1053,10 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
   match verb with
   (* given *)
   | "givenEvents" | "givenEvent" -> mk "given" (on_last (each (ctor_entry ?src ~kind:StepKind.Event)))
+  (* Each event paired with the time it is recorded at: `givenEventsAt` writes
+     `(event, time)`, `givenEventsWithTime` writes `(time, event)`. *)
+  | "givenEventsAt" -> mk "given" (on_last (each (timed_event ~event_first:true)))
+  | "givenEventsWithTime" -> mk "given" (on_last (each (timed_event ~event_first:false)))
   | "givenTodo" -> (
     match List.rev pos with
     | item :: id :: _ ->
@@ -1062,6 +1072,9 @@ let call_of ?src ?(number = 0) (lid : Longident.t) (args : (arg_label * expressi
     | None -> mk "when" [])
   | "whenReceived" -> mk "when" (on_last input)
   | "whenEvent" | "whenEvents" -> mk "when" (on_last (each (ctor_entry ?src ~kind:StepKind.Event)))
+  (* `whenEventWithTime(time, event)`: the event is the last argument. *)
+  | "whenEventWithTime" -> mk "when" (on_last (fun p -> [ ctor_entry ?src ~kind:StepKind.Event p ]))
+  | "whenEventsWithTime" -> mk "when" (on_last (each (timed_event ~event_first:false)))
   (* The commands the step before sent; `~only` names the one run, the rest left. *)
   | "whenIssued" ->
     let values =
