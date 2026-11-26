@@ -206,8 +206,8 @@ var Row = {
   money,
   firstAttachment
 };
-function money$1(param) {
-  let format = new Intl.NumberFormat(void 0, {
+function moneyWith(locales, param) {
+  let format = new Intl.NumberFormat(locales !== void 0 ? valFromOption(locales) : void 0, {
     currency: param[1],
     style: "currency"
   });
@@ -215,12 +215,26 @@ function money$1(param) {
   let digits$1 = digits !== void 0 ? digits : 2;
   return format.format(param[0] / Math.pow(10, digits$1));
 }
+function money$1(value) {
+  return moneyWith(void 0, value);
+}
+function moneyIn(value, locale) {
+  return moneyWith([locale], value);
+}
 function day(iso) {
   let at = new Date(iso);
   if (Number.isNaN(at.getTime())) {
     return "";
   } else {
     return at.toLocaleDateString();
+  }
+}
+function dayIn(iso, locale) {
+  let at = new Date(iso);
+  if (Number.isNaN(at.getTime())) {
+    return "";
+  } else {
+    return at.toLocaleDateString(locale);
   }
 }
 function pad(n) {
@@ -267,6 +281,7 @@ var trackerSteps = "tracker.steps";
 var trackerSummary = "tracker.summary";
 var detailMedia = "detail.media";
 var detailAside = "detail.aside";
+var detailFields = "detail.fields";
 var all = [
   cardsFace,
   galleryTile,
@@ -274,7 +289,8 @@ var all = [
   trackerSteps,
   trackerSummary,
   detailMedia,
-  detailAside
+  detailAside,
+  detailFields
 ];
 var RowSlot = {
   cardsFace,
@@ -284,6 +300,7 @@ var RowSlot = {
   trackerSummary,
   detailMedia,
   detailAside,
+  detailFields,
   all
 };
 var cardsEmpty = "cards.empty";
@@ -305,7 +322,9 @@ var ViewSlot = {
 };
 var Format = {
   money: money$1,
+  moneyIn,
   day,
+  dayIn,
   isoDay
 };
 
