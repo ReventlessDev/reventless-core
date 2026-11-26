@@ -718,6 +718,10 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-25
+- feat(core): a read model's schema lists the fields the server orders the whole list by ([6bc98ca](https://github.com/ReventlessDev/reventless-core/commit/6bc98ca69d64c90d57e61b443e09d5a9eb16f1d1))
+- feat(core): an ordered list pages by value and id, rows without a value last ([458f2cb](https://github.com/ReventlessDev/reventless-core/commit/458f2cbc1358dea47427323f5b5623907bbf9534))
+- feat(core): a store says how it orders, and a read model sorts by every plain field where it can ([f1fd83b](https://github.com/ReventlessDev/reventless-core/commit/f1fd83b13665419a51d7142f9220d39877faee40))
 ### 2026-11-24
 - feat(spec): a reference code is made by the platform and found by its value ([41c8e83](https://github.com/ReventlessDev/reventless-core/commit/41c8e83b507e9cd5222394472cfee360d836a49b))
 - docs(plan): a reference code is made by the platform and found by its value ([f71c3f8](https://github.com/ReventlessDev/reventless-core/commit/f71c3f8befd89fa94b947029068d33d31460d54a))
