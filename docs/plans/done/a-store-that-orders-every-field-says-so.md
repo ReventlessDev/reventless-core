@@ -1,8 +1,8 @@
 # Plan: a store that orders every field says so
 
-> **Status:** 🔨 In progress. [OES1](#4-steps) to [OES5](#4-steps) built 2026-11-25 (see each *As built*);
-> [OES6](#4-steps) seen on SQLite, its Postgres half waits for a stack that serves the shop's
-> read models from Postgres. Written 2026-11-23.
+> **Status:** ✅ Done 2026-11-26. [OES1](#4-steps) to [OES5](#4-steps) built 2026-11-25 (see each
+> *As built*); [OES6](#4-steps) seen on SQLite and, through the Postgres resolver on the sidecar,
+> on Postgres. Written 2026-11-23.
 >
 > **Questions and short answers:**
 >
@@ -29,11 +29,11 @@
 >    it**, which is fine for the read models an admin list shows; a large one gets an index later
 >    ([§5](#5-out-of-scope)). DynamoDB's surface is unchanged.
 >
-> **Relates to:** [the list ordering and filtering analysis](../analysis/autoui-list-ordering-and-filtering.md#client-vs-server-and-what-decides-which)
-> (its [per-window caveat](../analysis/autoui-list-ordering-and-filtering.md#caveat-aws-per-window-sort))
-> · [the Postgres query-db adapter](done/aws-postgres-querydb-adapter.md) (done) ·
-> [full-list ordered index promotion](Backlog/aws-fulllist-ordered-index-promotion.md) (backlog,
-> DynamoDB's own cure) · [query capability annotations](../../packages/doc/docs-app/ui-configuration.md#29-query-capability--what-the-ui-can-filter-and-sort-by).
+> **Relates to:** [the list ordering and filtering analysis](../../analysis/autoui-list-ordering-and-filtering.md#client-vs-server-and-what-decides-which)
+> (its [per-window caveat](../../analysis/autoui-list-ordering-and-filtering.md#caveat-aws-per-window-sort))
+> · [the Postgres query-db adapter](aws-postgres-querydb-adapter.md) (done) ·
+> [full-list ordered index promotion](../Backlog/aws-fulllist-ordered-index-promotion.md) (backlog,
+> DynamoDB's own cure) · [query capability annotations](../../../packages/doc/docs-app/ui-configuration.md#29-query-capability--what-the-ui-can-filter-and-sort-by).
 >
 > **Ids:** `OED` (orders every field, decision) in [§3](#3-decisions), `OES` (step) in
 > [§4](#4-steps).
@@ -57,24 +57,24 @@ the rows it holds.
 
 - **One surface for every store.** `deriveServerCapability` builds `sortFields` from the
   annotations alone
-  ([GraphQL_FragmentGenerator.res](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res)),
+  ([GraphQL_FragmentGenerator.res](../../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res)),
   and `deriveConnectionOrderByType` turns them into `<Type>OrderField`. Four places call it with
   the same arguments: the SDL generator, the DynamoDB resolvers
-  ([QueryDbResolvers_AppSync.res](../../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)),
+  ([QueryDbResolvers_AppSync.res](../../../reventless/aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)),
   the Postgres Lambda resolver
-  ([PgQueryResolverEntryPoint_Ops.res](../../reventless/aws/src/adapter/Runtime/PgQueryResolverEntryPoint_Ops.res))
+  ([PgQueryResolverEntryPoint_Ops.res](../../../reventless/aws/src/adapter/Runtime/PgQueryResolverEntryPoint_Ops.res))
   and the local resolvers
-  ([QueryDbResolvers_GraphQL.res](../../reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res)).
+  ([QueryDbResolvers_GraphQL.res](../../../reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res)).
 - **The stores can do more.** The Postgres engine orders by whatever `orderBy` names, as
   `ORDER BY (item->>'<field>')` with an id tiebreak
-  ([QueryEnginePostgres.res](../../reventless/postgres/src/QueryEnginePostgres.res)). The SQLite
+  ([QueryEnginePostgres.res](../../../reventless/postgres/src/QueryEnginePostgres.res)). The SQLite
   store pushes the order down as `json_extract` and `ORDER BY`
-  ([QueryDbStorage_Sqlite.res](../../reventless/local/src/adapter/QueryDb/QueryDbStorage_Sqlite.res)),
+  ([QueryDbStorage_Sqlite.res](../../../reventless/local/src/adapter/QueryDb/QueryDbStorage_Sqlite.res)),
   and the in-memory resolver sorts any field.
 - **Postgres pages by the sorted value alone.** Its cursor carries the field's value, and the next
   page asks for `value > cursor`; rows that share the value at a page's edge are skipped. The
   in-memory store breaks ties by id, as
-  [the analysis](../analysis/autoui-list-ordering-and-filtering.md#cursor-stability-across-the-two-backends)
+  [the analysis](../../analysis/autoui-list-ordering-and-filtering.md#cursor-stability-across-the-two-backends)
   says.
 - **DynamoDB's `@scanSort` holds per window.** A field that is no index's sort key is sorted within
   each read window; the platform warns at deploy (`validateScanSortAlignment`). The field is still
@@ -82,7 +82,7 @@ the rows it holds.
 - **Which store holds a read model** is chosen per read model on AWS
   (`QueryDbBackend.isPostgresFor`, admin stores stay on DynamoDB) and by the platform locally.
 - **The published schema** comes from `SuryToJsonSchema.deriveObjectSchema`, from the spec alone
-  ([SuryToJsonSchema.res](../../reventless/core/src/components/Api/SuryToJsonSchema.res)). A
+  ([SuryToJsonSchema.res](../../../reventless/core/src/components/Api/SuryToJsonSchema.res)). A
   trail's served names already travel on it as an offer the platform writes
   (`x-reventless-trail`), which is the shape this plan follows.
 
@@ -161,11 +161,11 @@ model's or a state view slice's schema, from `GraphQL_FragmentGenerator.wholeLis
 sort on one is a Query and holds across pages.
 
 **OES5 Docs.** With each step:
-[query capability annotations](../../packages/doc/docs-app/ui-configuration.md#29-query-capability--what-the-ui-can-filter-and-sort-by)
+[query capability annotations](../../../packages/doc/docs-app/ui-configuration.md#29-query-capability--what-the-ui-can-filter-and-sort-by)
 says what each store sorts and what `x-reventless-orders` means;
-[the GraphQL guide](../../packages/doc/docs-app/graphql-api-guide.md#7-filters-and-sorting-annotation-driven)
+[the GraphQL guide](../../../packages/doc/docs-app/graphql-api-guide.md#7-filters-and-sorting-annotation-driven)
 says `OrderField` depends on the store; the
-[Postgres status page](../../packages/doc/docs-infrastructure/postgres-status.md#what-it-covers)
+[Postgres status page](../../../packages/doc/docs-infrastructure/postgres-status.md#what-it-covers)
 says a list sorts by any field and what that costs.
 *Done when* the three say it and their links check.
 
@@ -181,10 +181,22 @@ page, the list came back in 9 pages each way, every order once, in order, and th
 `x-reventless-orders` on the served Orders schema (`Platform_ComponentDefinitions`) holds the same
 20 names as the enum.
 
-*The Postgres half waits.* Locally read models stay in memory under the Postgres backend, and the
-k8s shop does not deploy yet, so only an AWS stack with a Postgres selection serves the shop's
-read models from Postgres. The engine itself pages the same way: `QueryEnginePostgresPagingTest`
-and the list parity suite pass against the `docker-compose.postgres.yml` sidecar.
+*Seen on Postgres (2026-11-26), through the resolver, not a stack:* no stack serves the shop's
+read models from Postgres yet (locally they stay in memory under the Postgres backend, and no shop
+stack passes a `pgConnection`), so the Postgres Lambda's own modules ran against the
+`docker-compose.postgres.yml` sidecar. The 220 Orders rows of the SQLite sighting went in through
+`QueryDbStorage_Postgres_Ops.makeOperations`; `PgQueryResolverEntryPoint_Ops.registerBinding` bound
+Orders from the shop's own spec, with the pool the Lambda would build from Secrets Manager put in
+`PgRuntime.poolCache`; lists went through `PgQueryResolver_Lambda.handler` as an elevated caller.
+The binding's sort fields are the same 20 names as on SQLite. Sorted by `itemCount` DESC,
+`firstProductName` ASC, `reference` DESC and `shippingMethod` ASC (three values, so ties at every
+page edge), 25 to a page, each list came back in 9 pages each way, every order once, in order,
+and the same both ways. Forward pages ran in SQL; backward pages went to the spec, as they do on
+Postgres. The shop's orders have every optional field set, so rows without a value were not seen
+here. `QueryEnginePostgresPagingTest` holds that case. With the AWS platform's Postgres selection
+in place (`QueryDbBackend`, Plugins exempt), `publishedStateSchema` lists the same 20 names in
+`x-reventless-orders`. Without the selection it lists the 11 that DynamoDB orders the whole list by:
+`orderId` and the indexed trail's fields.
 
 Seen on the way, not this plan's: `Platform_Plugins { structure }` fails on the local platform,
 where the structure is stored offloaded and the field answers the pointer instead of the JSON.
@@ -198,6 +210,6 @@ where the structure is stored offloaded and the field answers the pointer instea
   An expression index for an `@index` field, or for a field a deployment sorts often, belongs to the
   Postgres adapter's own plan.
 - **DynamoDB ordering every field.** That is
-  [full-list ordered index promotion](Backlog/aws-fulllist-ordered-index-promotion.md), which stays
+  [full-list ordered index promotion](../Backlog/aws-fulllist-ordered-index-promotion.md), which stays
   in the backlog; this plan only stops the schema from claiming a per-window order holds for the
   whole list.
