@@ -340,6 +340,17 @@ let transform_cross_partition_tags ~loc (str : structure) : structure =
            pld_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [ new_elem ]) };
            pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
        | _ -> ld)
+    (* A semantic string ([ReferenceCode.t], [Email.t]): the marker goes onto the
+       schema its type names, so the field keeps its meaning. Left alone, the
+       attribute was dropped and the read stayed within one partition. *)
+    else if Util.branded_string_schema_lident ld.pld_type <> None then
+      let lid = Option.get (Util.branded_string_schema_lident ld.pld_type) in
+      { ld with
+        pld_type = partition_marker ~loc "markCrossPartition" ld.pld_type
+                     (Util.s_matches_apply ~loc
+                        (Ldot (Ldot (Lident "Reventless", "DcbTag"), "markCrossPartition"))
+                        [ (Nolabel, Ast_builder.Default.pexp_ident ~loc { txt = lid; loc }) ]);
+        pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
     else if is_string_type ld.pld_type then
       { ld with
         pld_type = partition_marker ~loc "markCrossPartition" ld.pld_type

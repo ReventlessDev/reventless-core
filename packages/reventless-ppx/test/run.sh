@@ -750,8 +750,9 @@ type event = Placed({@partitionTag orderId: string, @owner onBehalfOf?: string})
 type error = unit
 EOF
 
-# @issued and @dcbTag on a reference code: the command field the platform fills,
-# a command that presents the code, and the event it is found by.
+# @issued, @dcbTag and @crossPartition on a reference code: the command field the
+# platform fills, a command that presents the code, one whose decision reads the
+# code across every driver, and the event it is found by.
 cat > "$DCB/src/StateChange/IssuedCode.res" <<'EOF'
 @@reventless.spec
 
@@ -759,6 +760,7 @@ cat > "$DCB/src/StateChange/IssuedCode.res" <<'EOF'
 type command =
   | SignUp({@partitionTag driverId: string, @issued chargingToken: Reventless.ReferenceCode.t})
   | Present({@partitionTag sessionId: string, chargingToken: Reventless.ReferenceCode.t})
+  | Issue({@partitionTag driverId: string, @crossPartition chargingToken: Reventless.ReferenceCode.t})
 
 @schema
 type event =
@@ -2428,12 +2430,15 @@ assert_js_contains "$JS" 'onBehalfOf: s.m(Sury.$option(Owner$Reventless.string))
 assert_js_not_contains "$JS" 'noDcbTag' "@owner: @noDcbTag field attr stripped"
 
 echo ""
-echo "=== Test: @issued and @dcbTag on a reference code ==="
+echo "=== Test: @issued, @dcbTag and @crossPartition on a reference code ==="
 JS="$DCB/src/StateChange/IssuedCode.res.mjs"
 assert_js_contains "$JS" 'chargingToken: s.m(ReferenceCode$Reventless.issued)' \
   "@issued: the issued schema on the making command's field"
 assert_js_contains "$JS" 'DcbTag$Reventless.markDeclared(ReferenceCode$Reventless.schema)' \
   "@dcbTag on ReferenceCode.t: the tag composes onto the code's schema"
+assert_js_contains "$JS" 'DcbTag$Reventless.markCrossPartition(ReferenceCode$Reventless.schema)' \
+  "@crossPartition on ReferenceCode.t: the marker composes onto the code's schema"
+assert_js_not_contains "$JS" 'crossPartition' "@crossPartition on ReferenceCode.t: field attr stripped"
 
 echo ""
 echo "=== Test: @dcbTag(\"key\") payload form — scalar and array<string> ==="
