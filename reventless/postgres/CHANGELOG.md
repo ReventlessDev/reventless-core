@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.220 (2026-11-26)
+
+### Features
+
+* **core:** a store says how it orders, and a read model sorts by every plain field where it can ([f1fd83b](https://github.com/ReventlessDev/reventless-core/commit/f1fd83b13665419a51d7142f9220d39877faee40))
+* **core:** an ordered list pages by value and id, rows without a value last ([458f2cb](https://github.com/ReventlessDev/reventless-core/commit/458f2cbc1358dea47427323f5b5623907bbf9534))
+
+
 # 3.0.0-alpha.219 (2026-11-25)
 
 **Note:** Version bump only for package @reventlessdev/reventless-postgres

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.8 (2026-11-26)
+
+### Bug Fixes
+
+* **standin:** every timer runs once when the runtime starts ([87db5dd](https://github.com/ReventlessDev/reventless-core/commit/87db5dd9f40d1398a705f5f5a6102da6ba0e0b90))
+### Features
+
+* **standin:** a twin keeps its state across runs ([36f4c07](https://github.com/ReventlessDev/reventless-core/commit/36f4c0709a0286f4b1998ce43879517db19e21bd))
+
+
 # 1.0.0-alpha.7 (2026-11-24)
 
 ### Features

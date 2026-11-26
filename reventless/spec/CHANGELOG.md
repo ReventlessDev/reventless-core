@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.218 (2026-11-26)
+
+### Features
+
+* **core:** a store says how it orders, and a read model sorts by every plain field where it can ([f1fd83b](https://github.com/ReventlessDev/reventless-core/commit/f1fd83b13665419a51d7142f9220d39877faee40))
+
+
 # 3.0.0-alpha.217 (2026-11-25)
 
 ### Bug Fixes

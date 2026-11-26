@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.351 (2026-11-26)
+
+### Features
+
+* **core:** a store says how it orders, and a read model sorts by every plain field where it can ([f1fd83b](https://github.com/ReventlessDev/reventless-core/commit/f1fd83b13665419a51d7142f9220d39877faee40))
+* **core:** an ordered list pages by value and id, rows without a value last ([458f2cb](https://github.com/ReventlessDev/reventless-core/commit/458f2cbc1358dea47427323f5b5623907bbf9534))
+* **local:** a read model whose shape changed is projected again, and two systems' read models of one name are refused ([99e17c7](https://github.com/ReventlessDev/reventless-core/commit/99e17c7105ad2983c7084ae83871af8003872870))
+* **standin:** a twin keeps its state across runs ([36f4c07](https://github.com/ReventlessDev/reventless-core/commit/36f4c0709a0286f4b1998ce43879517db19e21bd))
+
+
 # 3.0.0-alpha.350 (2026-11-25)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local
