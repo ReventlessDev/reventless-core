@@ -37,6 +37,7 @@ function drifted(now, driftMs) {
 
 function erase(name, view, init, timers, messages, told, describe) {
   let twins = {};
+  let restored = {};
   let rates = {
     contents: calm
   };
@@ -114,8 +115,9 @@ function erase(name, view, init, timers, messages, told, describe) {
         let driftMs = Seed_Random$ReventlessSeed.float(mischief) < rates.contents.drift ? (Seed_Random$ReventlessSeed.int(mischief, 1, 30) * 1000 | 0) * (
             Seed_Random$ReventlessSeed.float(mischief) < 0.5 ? -1 : 1
           ) : 0;
+        let kept = restored[id];
         twins[id] = {
-          state: init(id, param[1], random),
+          state: kept !== undefined ? (Stdlib_Dict.$$delete(restored, id), kept) : init(id, param[1], random),
           random: random,
           mischief: mischief,
           queue: Promise.resolve(),
@@ -259,6 +261,16 @@ function erase(name, view, init, timers, messages, told, describe) {
         param[0],
         Object.fromEntries(fields.concat(silence))
       ];
+    }),
+    kept: () => Object.fromEntries(Stdlib_Array.filterMap(Object.entries(twins), param => {
+      let id = param[0];
+      return Stdlib_Option.map(JSON.stringify(param[1].state), text => [
+        id,
+        JSON.parse(text)
+      ]);
+    })),
+    restore: states => Stdlib_Dict.forEachWithKey(states, (state, id) => {
+      restored[id] = state;
     })
   };
 }
@@ -288,7 +300,9 @@ function service(def) {
     rates: kind.rates,
     setRates: kind.setRates,
     silence: kind.silence,
-    twins: kind.twins
+    twins: kind.twins,
+    kept: kind.kept,
+    restore: kind.restore
   };
 }
 

@@ -74,6 +74,11 @@ let speedFrom = (config: config, ~env) =>
   | None => config.speed->Option.getOr(1.)
   }
 
+/** Where the twins' states are kept between runs: beside the store's file, so they live and die
+    with it; none where the store keeps nothing on this disk. */
+let keptFile = (): option<string> =>
+  BackendState.getObjectStoreRoot()->Option.map(dir => NodePath.join([dir, "standins.json"]))
+
 /** Starts the stand-ins against the platform on `domainPort`. A failure is logged, never thrown:
     a platform whose stand-ins could not start still serves its plugins. */
 let start = async (config: config, ~domainPort: int, ~env=NodeProcess.env): unit =>
@@ -100,6 +105,7 @@ let start = async (config: config, ~domainPort: int, ~env=NodeProcess.env): unit
         ->Dict.get("REVENTLESS_STANDINS_SEED")
         ->Option.flatMap(s => Int.fromString(s))
         ->Option.getOr(config.seed->Option.getOr(1)),
+        ~keepIn=?keptFile(),
         (),
       )
       LocalCapabilities.registerDevices(devicesOf(runtime))

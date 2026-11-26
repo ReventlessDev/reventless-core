@@ -122,6 +122,11 @@ type t = {
   silence: (~id: string, ~ticks: int) => result<unit, string>,
   // Every twin: its state, whether it is silent (and if so on purpose), its clock's drift.
   twins: unit => array<(string, JSON.t)>,
+  // Each twin's state as it is kept between runs, by id: a device keeps what it counted when it
+  // restarts, so a meter never goes back.
+  kept: unit => dict<JSON.t>,
+  // States kept by an earlier run, by id: a twin made for one of these ids starts from it.
+  restore: dict<JSON.t> => unit,
 }
 
 /** A string's 32-bit hash, so a twin's generator is seeded by its id. */
@@ -164,6 +169,9 @@ let erase = (
   ~describe: 'state => JSON.t,
 ): t => {
   let twins: dict<twin<'state>> = Dict.make()
+  // States an earlier run kept, taken by the twin made for their id. A state is plain data (a
+  // record of numbers, strings, options and JSON), so it is kept as its JSON.
+  let restored: dict<JSON.t> = Dict.make()
   let rates = ref(calm)
   let deliver = (twin: twin<'state>, ~id, sends: array<send>, sendTo: sendTo) => {
     let next = twin.queue->Promise.then(async () =>
@@ -233,7 +241,12 @@ let erase = (
           twins->Dict.set(
             id,
             {
-              state: init(~id, ~row, ~random),
+              state: switch restored->Dict.get(id) {
+              | Some(kept) =>
+                restored->Dict.delete(id)
+                (Obj.magic(kept): 'state)
+              | None => init(~id, ~row, ~random)
+              },
               random,
               mischief,
               queue: Promise.resolve(),
@@ -298,6 +311,14 @@ let erase = (
       },
     rates: () => rates.contents,
     setRates: r => rates := r,
+    kept: () =>
+      twins
+      ->Dict.toArray
+      ->Array.filterMap(((id, twin)) =>
+        JSON.stringifyAny(twin.state)->Option.map(text => (id, JSON.parseOrThrow(text)))
+      )
+      ->Dict.fromArray,
+    restore: states => states->Dict.forEachWithKey((state, id) => restored->Dict.set(id, state)),
     silence: (~id, ~ticks) =>
       switch twins->Dict.get(id) {
       | None => Error(`${name} has no instance ${id}`)

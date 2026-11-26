@@ -188,6 +188,60 @@ describe("Standin.Runtime, against the fixture app:", () => {
     30_000,
   )
 
+  // A device keeps what it counted when it restarts: a twin's state is kept in the run's file, and
+  // the next run's twin for the same thing goes on from it, not from a new state.
+  testPromiseWithTimeout(
+    "a run keeps its twins' states in its file, and the next run goes on from them",
+    async () => {
+      let keepIn = NodePath.join([
+        NodeOs.tmpdir(),
+        `standins-${Math.Int.random(0, 1_000_000)->Int.toString}.json`,
+      ])
+      let commands = await Seed.Commands.fetch(theClient())
+      let run = (~seed) => {
+        let charger = ChargerStandin.make()
+        charger.setRates(Standin.Kind.exact)
+        let runtime = Standin.Runtime.make(
+          ~client=theClient(),
+          ~doors=doors.contents,
+          ~commands,
+          ~kinds=[charger],
+          ~speed=600.,
+          ~seed,
+          ~refreshMs=60_000,
+          ~keepIn,
+          (),
+        )
+        started->Array.push(runtime)
+        runtime
+      }
+      let stateOf = (runtime, id) =>
+        switch runtime->Standin.Runtime.state {
+        | [(_, twins)] =>
+          twins
+          ->Array.find(((twin, _)) => twin == id)
+          ->Option.flatMap(((_, t)) => t->Seed.Commands.get("state"))
+        | _ => None
+        }
+      let first = run(~seed=45)
+      await first->Standin.Runtime.start
+      await Seed.Client.sleep(500)
+      await first->Standin.Runtime.stop
+      let kept = stateOf(first, "bay-1")
+      // Another seed, which would draw another session: only the kept state gives the same one.
+      let second = run(~seed=46)
+      second->Standin.Runtime.load
+      await second->Standin.Runtime.refresh
+      let fresh = run(~seed=46)
+      await fresh->Standin.Runtime.refresh
+      expect(kept->Option.isSome)->toBe(true)
+      expect(stateOf(second, "bay-1"))->toEqual(kept)
+      expect(stateOf(fresh, "bay-1") == kept)->toBe(false)
+      NodeFs.rmSync(keepIn, {force: true})
+    },
+    30_000,
+  )
+
   testPromiseWithTimeout(
     "a twin told a new power meters at it, and says no to what it does not understand",
     async () => {

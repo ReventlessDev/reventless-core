@@ -52,6 +52,9 @@ type t = {
   mutable running: bool,
   // Kinds switched off: their timers do not run; by hand they still send.
   mutable off: array<string>,
+  // The file the twins' states are kept in between runs, `{kind: {id: state}}`; none, they start
+  // afresh each run.
+  keepIn?: string,
 }
 
 let keep = 200
@@ -65,6 +68,7 @@ let make = (
   ~seed=1,
   ~refreshMs=60_000,
   ~onSent=_ => (),
+  ~keepIn=?,
   (),
 ): t => {
   client,
@@ -80,7 +84,41 @@ let make = (
   inFlight: [],
   running: false,
   off: [],
+  ?keepIn,
 }
+
+/** Writes every twin's state to the run's file; nothing where it keeps none, or it cannot be
+    written (the next run then starts those twins afresh). */
+let save = (r: t): unit =>
+  switch r.keepIn {
+  | None => ()
+  | Some(path) =>
+    let all = r.kinds->Array.map(k => (k.name, JSON.Encode.object(k.kept())))->Dict.fromArray
+    try {
+      NodeFs.mkdirSync(NodePath.dirname(path), {recursive: true})
+      NodeFs.writeFileSync(path, JSON.stringify(JSON.Encode.object(all)))
+    } catch {
+    | _ => Console.error(`[Standin] the twins' states could not be kept in ${path}`)
+    }
+  }
+
+/** Hands each kind the states an earlier run kept, for the twins it makes next. */
+let load = (r: t): unit =>
+  switch r.keepIn {
+  | None => ()
+  | Some(path) =>
+    switch NodeFs.readFileSync(path)->JSON.parseOrThrow {
+    | Object(all) =>
+      r.kinds->Array.forEach(k =>
+        switch all->Dict.get(k.name) {
+        | Some(Object(states)) => k.restore(states)
+        | _ => ()
+        }
+      )
+    | _ => ()
+    | exception _ => ()
+    }
+  }
 
 /** Whether every send a kind declares has a door and a mutation to check it by;
     the first one that has not. */
@@ -171,11 +209,14 @@ let refresh = async (r: t): unit => {
 let start = async (r: t): unit =>
   if !r.running {
     r.running = true
+    load(r)
     await refresh(r)
     r.kinds->Array.forEach(kind =>
       if !(r.off->Array.includes(kind.name)) {
         kind.timers->Array.forEach(((timer, _)) =>
-          kind.fire(~timer, ~now=Date.make(), ~elapsedMs=0., send(r))->ignore
+          kind.fire(~timer, ~now=Date.make(), ~elapsedMs=0., send(r))
+          ->Promise.thenResolve(() => save(r))
+          ->ignore
         )
       }
     )
@@ -184,7 +225,9 @@ let start = async (r: t): unit =>
         NodeTimers.setInterval(
           () =>
             if r.running && !(r.off->Array.includes(kind.name)) {
-              kind.fire(~timer, ~now=Date.make(), send(r))->ignore
+              kind.fire(~timer, ~now=Date.make(), send(r))
+              ->Promise.thenResolve(() => save(r))
+              ->ignore
             },
           Seed.Pace.realMs(r.speed, everyMs)->Math.Int.max(1),
         )
@@ -204,6 +247,7 @@ let stop = async (r: t): unit => {
   r.handles->Array.forEach(NodeTimers.clearInterval)
   r.handles = []
   let _ = await Promise.all(r.inFlight)
+  save(r)
 }
 
 /** Sends one of a kind's messages for one twin, now, and answers with what each
@@ -226,7 +270,9 @@ let byHand = async (
       ~now=Date.make(),
       send(r, ~collect=s => answers->Array.push(s)),
     ) {
-    | Ok() => Ok(answers)
+    | Ok() =>
+      save(r)
+      Ok(answers)
     | Error(why) => Error(why)
     }
   }
@@ -240,7 +286,17 @@ let state = (r: t): array<(string, array<(string, JSON.t)>)> =>
 let tell = (r: t, ~kind: string, ~instance: string, ~message: string, ~body: JSON.t) =>
   switch r.kinds->Array.find(k => k.name == kind) {
   | None => Promise.resolve(Standin_Kind.NotReachable(`no stand-in plays ${kind}`))
-  | Some(k) => k.tell(~id=instance, ~message, ~body, ~now=Date.make(), send(r))
+  | Some(k) =>
+    k.tell(
+      ~id=instance,
+      ~message,
+      ~body,
+      ~now=Date.make(),
+      send(r),
+    )->Promise.thenResolve(answer => {
+      save(r)
+      answer
+    })
   }
 
 /** Changes a kind's misbehaviour while it runs. */

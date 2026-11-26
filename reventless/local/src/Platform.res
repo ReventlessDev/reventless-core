@@ -171,6 +171,12 @@ module MakeWithConfig = (
       // discover it could not listen.
       LocalPlatformStart.guardReset(~path, ())
       Backend.removeFileIfExists(path)
+
+      // The stand-ins' twins keep their states beside the store: a store started afresh starts
+      // them afresh too.
+      if path != ":memory:" {
+        Backend.removeFileIfExists(NodePath.join([NodePath.dirname(path), "standins.json"]))
+      }
     }
     let db = SqliteDriver.openDb(~path)
     BackendState.setSqlite(~db, ~path)

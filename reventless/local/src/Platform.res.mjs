@@ -2,6 +2,7 @@
 
 import * as Sury from "sury";
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
+import * as Nodepath from "node:path";
 import * as NodeCrypto from "@reventlessdev/rescript-node/src/NodeCrypto.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Bool from "@rescript/runtime/lib/es6/Stdlib_Bool.js";
@@ -191,6 +192,9 @@ function MakeWithConfig(Config) {
     if (resetOnStart) {
       LocalPlatformStart$ReventlessLocal.guardReset(path, undefined, undefined);
       Backend$ReventlessLocal.removeFileIfExists(path);
+      if (path !== ":memory:") {
+        Backend$ReventlessLocal.removeFileIfExists(Nodepath.join(Nodepath.dirname(path), "standins.json"));
+      }
     }
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
@@ -2084,6 +2088,9 @@ function Make($star) {
     if (resetOnStart) {
       LocalPlatformStart$ReventlessLocal.guardReset(path, undefined, undefined);
       Backend$ReventlessLocal.removeFileIfExists(path);
+      if (path !== ":memory:") {
+        Backend$ReventlessLocal.removeFileIfExists(Nodepath.join(Nodepath.dirname(path), "standins.json"));
+      }
     }
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
