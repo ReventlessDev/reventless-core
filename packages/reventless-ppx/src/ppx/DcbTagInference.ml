@@ -309,7 +309,19 @@ let transform_partition_tags ~loc (str : structure) : structure =
                      (identity_tag_attr ~loc "markPartition" m);
         pld_attributes = strip_partition_tag_field_attr ld.pld_attributes }
     | _ ->
+    (* A semantic string ([ReferenceCode.t], [Email.t]): the marker goes onto the
+       schema its type names, so the field keeps its meaning. Left alone, the
+       attribute was dropped and the partition was inferred from other fields. *)
     if has_partition_tag_field_attr ld.pld_attributes
+       && Util.branded_string_schema_lident ld.pld_type <> None then
+      let lid = Option.get (Util.branded_string_schema_lident ld.pld_type) in
+      { ld with
+        pld_type = partition_marker ~loc "markPartition" ld.pld_type
+                     (Util.s_matches_apply ~loc
+                        (Ldot (Ldot (Lident "Reventless", "DcbTag"), "markPartition"))
+                        [ (Nolabel, Ast_builder.Default.pexp_ident ~loc { txt = lid; loc }) ]);
+        pld_attributes = strip_partition_tag_field_attr ld.pld_attributes }
+    else if has_partition_tag_field_attr ld.pld_attributes
        && is_string_type ld.pld_type then
       { ld with
         pld_type = partition_marker ~loc "markPartition" ld.pld_type (dcb_partition_attr ~loc);
