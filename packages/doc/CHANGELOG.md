@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-11-27
+- feat(dcb): a decision reads a small kind of event whole ([ec618b4](https://github.com/ReventlessDev/reventless-core/commit/ec618b47f185f72a202391bb7a0c2e4d48a5c932))
 ### 2026-11-25
 - feat(core): a read model's schema lists the fields the server orders the whole list by ([6bc98ca](https://github.com/ReventlessDev/reventless-core/commit/6bc98ca69d64c90d57e61b443e09d5a9eb16f1d1))
 - feat(core): an ordered list pages by value and id, rows without a value last ([458f2cb](https://github.com/ReventlessDev/reventless-core/commit/458f2cbc1358dea47427323f5b5623907bbf9534))
