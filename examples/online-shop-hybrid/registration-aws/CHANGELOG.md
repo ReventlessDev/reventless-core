@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.57 (2026-11-27)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-registration-aws
+
+
+
+
+
 # 1.0.0-alpha.56 (2026-11-26)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-registration-aws

@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/reventless-standin-fixture",
   "private": true,
-  "version": "1.0.0-alpha.16",
+  "version": "1.0.0-alpha.17",
   "description": "A small charging app the stand-in runtime's tests run against: chargers, a signed meter-reading door, readings per session",
   "license": "Apache-2.0",
   "scripts": {

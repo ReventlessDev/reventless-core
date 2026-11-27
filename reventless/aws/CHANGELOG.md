@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.451 (2026-11-27)
+
+### Features
+
+* **dcb:** a decision reads a small kind of event whole ([ec618b4](https://github.com/ReventlessDev/reventless-core/commit/ec618b47f185f72a202391bb7a0c2e4d48a5c932))
+
+
 # 3.0.0-alpha.450 (2026-11-26)
 
 ### Features
