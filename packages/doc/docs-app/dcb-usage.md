@@ -690,6 +690,48 @@ counts children that are written often, partition the children by the parent
 instead. If the check can live in a view, keep it there. And if the command must
 answer within a strict latency, remember that a lagging index makes it wait.
 
+### A slice reading a small kind of event whole (`@readWhole`)
+
+**In plain words:** placing an order records the fee of its shipping method. Each
+fee is kept under its own method, and the order's command names its method as an
+enum, which is no tag to read by, so a read by the command's tags finds none of
+them. Mark the consumed case `@readWhole`, and the slice reads every event of that
+kind beside what its tags read, and picks the fee it needs.
+
+```rescript
+// Order/StateChange/PlaceOrder.res — partitioned by orderId
+@schema
+type consumedEvent =
+  | OrderPlaced({orderId: OrderId.t})
+  | CatalogProductSynced({productId: CatalogSpec.ProductId.t, name: string, price: Reventless.Money.t})
+  | @readWhole ShippingFeeSet({shippingMethodId: string, fee: Reventless.Money.t})
+```
+
+The online-shop-hybrid example keeps the fees in its `Shipping` chapter
+(`SetShippingFee`), which reads the list whole too.
+
+The marked case takes no part in the slice's partition: its ids are neither the
+slice's own nor references it reads by. Each event of the kind carries a tag of its
+type (`reventless.kind`), which the event's writers add when they append it, and the
+slice reads the kind by that tag, across partitions.
+
+- **It suits a short list that changes rarely:** shipping methods, a price list, a set
+  of settings. The slice reads all of it on every command.
+- **It does not suit a kind that grows with the business** (orders, sessions). The
+  read grows with it, and every write of the kind conflicts with every reader in
+  flight. A whole read that returns more than 100 events logs a warning.
+- **Its cost lands on the writers.** Every append of the kind moves the kind's fence.
+  The build logs one line per kind read whole, and `check:dcb-scope` records it under
+  `wholeEventTypes`. On AWS the table gains the `tag_reventless.kind` index on the
+  first deploy that reads a kind whole.
+- **Only a slice of the boundary tags the kind.** A kind no slice of the plugin writes
+  is refused at build.
+- **A deployed table needs its stored events tagged.** Events written before the
+  marker carry no kind tag. Run `tag-kinds --table <name> --kinds ShippingFeeSet`
+  (from `reventless-aws`) once after the deploy, when every Lambda runs the new code.
+  It tags each stored event of the kind, moves the kind's fence, and counts it. Until
+  then the slice sees only the events written since the deploy.
+
 ## Identities: one type per id
 
 **In plain words:** declare each entity's id once with `Id.Make`, and type every field that holds it. The compiler then refuses an order id where a customer id belongs. The tags, partitions and references the framework derives stay what they were, because an identity's key is the name those fields already had. See [Id](common-modules/Id.md) for the module itself.

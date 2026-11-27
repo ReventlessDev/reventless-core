@@ -17,6 +17,7 @@ module NotificationSourceClaims = ReventlessGwt.Flow_GWT.DecisionStep(
   NotificationSourceClaims_Decision,
 )
 module PlaceOrder = ReventlessGwt.Flow_GWT.DecisionStep(PlaceOrder, PlaceOrder_Decision)
+module SetShippingFee = ReventlessGwt.Flow_GWT.DecisionStep(SetShippingFee, SetShippingFee_Decision)
 module ShipOrder = ReventlessGwt.Flow_GWT.DecisionStep(ShipOrder, ShipOrder_Decision)
 module SyncCatalogProduct = ReventlessGwt.Flow_GWT.DecisionStep(
   SyncCatalogProduct,
@@ -100,6 +101,7 @@ let parts: ReventlessGwt.Flow_GWT.parts = {
     NotificationPreferences.deciding,
     NotificationSourceClaims.deciding,
     PlaceOrder.deciding,
+    SetShippingFee.deciding,
     ShipOrder.deciding,
     SyncCatalogProduct.deciding,
   ],

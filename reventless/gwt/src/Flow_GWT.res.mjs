@@ -264,13 +264,19 @@ function entryMatchesQuery(entry, query) {
       let types = qi.eventTypes;
       let typeMatch = types !== undefined ? types.includes(entry.eventType) : true;
       let tags = qi.tags;
-      let tagMatch = tags !== undefined ? tags.every(tag => entry.tags.some(et => {
-          if (et.key === tag.key) {
-            return et.value === tag.value;
+      let tagMatch = tags !== undefined ? tags.every(tag => {
+          if (tag.key === DcbTag$Reventless.kindTagKey && tag.value === entry.eventType) {
+            return true;
           } else {
-            return false;
+            return entry.tags.some(et => {
+              if (et.key === tag.key) {
+                return et.value === tag.value;
+              } else {
+                return false;
+              }
+            });
           }
-        })) : true;
+        }) : true;
       if (typeMatch) {
         return tagMatch;
       } else {
@@ -734,7 +740,7 @@ function DecisionStep(Spec) {
         key: key
       }
     })), crossPartitionTagKeys);
-    let historyFor = (s, command) => decodeMatching(s.log, consumedDecoder, DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined));
+    let historyFor = (s, command) => decodeMatching(s.log, consumedDecoder, DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined, DcbTag$Reventless.wholeEventTypesOfSchema(Spec.consumedEventSchema)));
     let Guard = Decision_GWT$ReventlessGwt.Acting({
       name: Spec.name,
       historySchema: Spec.consumedEventSchema,

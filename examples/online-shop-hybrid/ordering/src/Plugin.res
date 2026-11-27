@@ -39,6 +39,13 @@ let dcbSliceSchemas: array<Reventless.DcbTag.sliceSchemas> = [
     moduleUrl: PlaceOrder.moduleUrl,
   },
   {
+    name: SetShippingFee.name,
+    commandSchema: SetShippingFee.commandSchema->S.castToUnknown,
+    consumedEventSchema: SetShippingFee.consumedEventSchema->S.castToUnknown,
+    eventSchema: SetShippingFee.eventSchema->S.castToUnknown,
+    moduleUrl: SetShippingFee.moduleUrl,
+  },
+  {
     name: ShipOrder.name,
     commandSchema: ShipOrder.commandSchema->S.castToUnknown,
     consumedEventSchema: ShipOrder.consumedEventSchema->S.castToUnknown,
@@ -70,6 +77,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     NotificationSourceClaims_Decision,
   )
   module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Decision)
+  module SetShippingFeeSlice = Platform.StateChangeSlice.Make(
+    SetShippingFee,
+    SetShippingFee_Decision,
+  )
   module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Decision)
   module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(
     SyncCatalogProduct,
@@ -156,6 +167,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       module(NotificationPreferencesSlice),
       module(NotificationSourceClaimsSlice),
       module(PlaceOrderSlice),
+      module(SetShippingFeeSlice),
       module(ShipOrderSlice),
       module(SyncCatalogProductSlice),
     ],
@@ -192,6 +204,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ("Orders", "Order"),
       ("PlaceOrder", "Order"),
       ("SendNotification", "Notification"),
+      ("SetShippingFee", "Shipping"),
       ("ShipOrder", "Order"),
       ("SyncCatalogProduct", "CatalogProduct"),
       ("VerifyCustomerEmail", "Customer"),
@@ -214,6 +227,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(NotificationPreferencesSlice),
         module(NotificationSourceClaimsSlice),
         module(PlaceOrderSlice),
+        module(SetShippingFeeSlice),
         module(ShipOrderSlice),
         module(SyncCatalogProductSlice),
       ],

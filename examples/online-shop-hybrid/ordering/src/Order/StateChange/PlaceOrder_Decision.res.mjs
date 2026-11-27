@@ -16,12 +16,26 @@ let initialState_shelf = [];
 
 let initialState_productImages = [];
 
+let initialState_shippingFees = [];
+
 let initialState = {
   placedOrderIds: initialState_placedOrderIds,
   availableProductIds: initialState_availableProductIds,
   shelf: initialState_shelf,
-  productImages: initialState_productImages
+  productImages: initialState_productImages,
+  shippingFees: initialState_shippingFees
 };
+
+function shippingMethodId(method) {
+  switch (method) {
+    case "Standard" :
+      return "Standard";
+    case "Express" :
+      return "Express";
+    case "Pickup" :
+      return "Pickup";
+  }
+}
 
 function replacing(pairs, productId, value) {
   return pairs.filter(param => Primitive_object.notequal(param[0], productId)).concat([[
@@ -46,7 +60,8 @@ function evolve(state, event) {
         placedOrderIds: state.placedOrderIds.includes(orderId) ? state.placedOrderIds : state.placedOrderIds.concat([orderId]),
         availableProductIds: state.availableProductIds,
         shelf: state.shelf,
-        productImages: state.productImages
+        productImages: state.productImages,
+        shippingFees: state.shippingFees
       };
     case "CatalogProductPriceChanged" :
       let productId = event.productId;
@@ -58,7 +73,8 @@ function evolve(state, event) {
             name: product.name,
             price: event.price
           }) : state.shelf,
-        productImages: state.productImages
+        productImages: state.productImages,
+        shippingFees: state.shippingFees
       };
     case "CatalogProductWithdrawn" :
       let productId$1 = event.productId;
@@ -66,7 +82,8 @@ function evolve(state, event) {
         placedOrderIds: state.placedOrderIds,
         availableProductIds: state.availableProductIds.filter(id => Primitive_object.notequal(id, productId$1)),
         shelf: state.shelf,
-        productImages: state.productImages
+        productImages: state.productImages,
+        shippingFees: state.shippingFees
       };
     case "CatalogProductSynced" :
     case "CatalogProductRelisted" :
@@ -78,7 +95,16 @@ function evolve(state, event) {
         placedOrderIds: state.placedOrderIds,
         availableProductIds: state.availableProductIds,
         shelf: state.shelf,
-        productImages: productImage !== undefined ? replacing(state.productImages, productId$2, productImage) : without(state.productImages, productId$2)
+        productImages: productImage !== undefined ? replacing(state.productImages, productId$2, productImage) : without(state.productImages, productId$2),
+        shippingFees: state.shippingFees
+      };
+    case "ShippingFeeSet" :
+      return {
+        placedOrderIds: state.placedOrderIds,
+        availableProductIds: state.availableProductIds,
+        shelf: state.shelf,
+        productImages: state.productImages,
+        shippingFees: replacing(state.shippingFees, event.shippingMethodId, event.fee)
       };
   }
   let productId$3 = event.productId;
@@ -89,7 +115,8 @@ function evolve(state, event) {
       name: event.name,
       price: event.price
     }),
-    productImages: state.productImages
+    productImages: state.productImages,
+    shippingFees: state.shippingFees
   };
 }
 
@@ -283,6 +310,7 @@ function decide(state, command) {
   let first = Stdlib_Option.map(lines[0], line => line.productId);
   let firstProductName = Stdlib_Option.map(lines[0], line => line.name);
   let firstProductImage = Stdlib_Option.flatMap(first, id => lookup(state.productImages, id));
+  let shippingFee = lookup(state.shippingFees, shippingMethodId(shippingMethod));
   return {
     TAG: "Ok",
     _0: [{
@@ -296,7 +324,8 @@ function decide(state, command) {
         shippingMethod: shippingMethod,
         deliveryWindow: deliveryWindow,
         firstProductName: firstProductName,
-        firstProductImage: firstProductImage
+        firstProductImage: firstProductImage,
+        shippingFee: shippingFee
       }]
   };
 }
@@ -308,6 +337,7 @@ let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChang
 export {
   Spec,
   initialState,
+  shippingMethodId,
   replacing,
   without,
   lookup,

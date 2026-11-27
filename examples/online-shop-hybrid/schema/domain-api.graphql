@@ -515,6 +515,7 @@ type Mutation {
   Ordering_EmailVerificationChallenges(customerId: ID!, email: String!, issuedAt: String!, proofHash: String!, purpose: String!): CommandResult!
   Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, lineItems: [Ordering_PlaceOrderLineItems!]!, orderId: ID!, reference: String, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
   Ordering_RelistSyncedProduct(productId: ID!): CommandResult!
+  Ordering_SetShippingFee(fee: MoneyInput!, shippingMethod: Ordering_SetShippingFeeShippingMethod!): CommandResult!
   Ordering_ShipOrder(orderId: ID!): CommandResult!
   Ordering_Subscribe(category: Ordering_SubscribeCategory!, channel: Ordering_SubscribeChannel!, recipientId: ID!): CommandResult!
   Ordering_SyncNewProduct(name: String!, price: MoneyInput!, productId: ID!): CommandResult!
@@ -1564,6 +1565,12 @@ enum Ordering_SendNotificationTodoStatus {
   Processing
 }
 
+enum Ordering_SetShippingFeeShippingMethod {
+  Express
+  Pickup
+  Standard
+}
+
 enum Ordering_SubscribeCategory {
   Marketing
   OrderConfirmation
@@ -2262,6 +2269,7 @@ type Subscription {
   onOrdering_EmailVerificationChallenges(id: ID): CommandResult
   onOrdering_PlaceOrder(id: ID): CommandResult
   onOrdering_RelistSyncedProduct(id: ID): CommandResult
+  onOrdering_SetShippingFee(id: ID): CommandResult
   onOrdering_ShipOrder(id: ID): CommandResult
   onOrdering_Subscribe(id: ID): CommandResult
   onOrdering_SyncNewProduct(id: ID): CommandResult

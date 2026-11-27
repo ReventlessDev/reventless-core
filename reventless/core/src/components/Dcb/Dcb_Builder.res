@@ -307,6 +307,14 @@ module Make = (
           })
         })
         ->Array.map(tagKey => `tag_${tagKey}`)
+      // A kind some slice reads whole is read by its kind tag's index.
+      let readsWhole =
+        stateChangeSlices->Array.some((module(Sc: StateChangeSlice.T)) =>
+          Reventless.DcbTag.wholeEventTypesOfSchema(Sc.Spec.consumedEventSchema) != []
+        )
+      let indexes = readsWhole
+        ? indexes->Array.concat([`tag_${Reventless.DcbTag.kindTagKey}`])
+        : indexes
       let indexes = if indexes->Array.length > 1 {
         indexes->Array.concat(["tag_composite"])
       } else {
@@ -438,6 +446,9 @@ module Make = (
       // A `@crossPartition` on a consumed arm by another key than the slice's own stops it.
       checkCrossPartitionArms(~component=name, ~shapes=inferenceShapes, ~inferred)
 
+      // A kind read whole that no slice of the boundary writes is never tagged: it stops the build.
+      refuse(~component=name, Reventless.DcbValidation.validateWholeReads(~shapes=inferenceShapes))
+
       // All-or-nothing: thread the derived scope only when every slice resolved.
       // An ambiguous boundary keeps the annotated values (no partial inference).
       // Both this builder and the deployed command-handler entry point
@@ -485,6 +496,22 @@ module Make = (
             log.info(~comp="Dcb_Builder", message)
           }
         })
+      )
+
+      // A whole read, like a pair, puts a cost on its writers: each append of the kind moves the
+      // kind's fence, and conflicts with every reader in flight.
+      effective.wholeEventTypes->Array.forEach(eventType =>
+        log.info(
+          ~comp="Dcb_Builder",
+          `DCB whole read (${name}): ${eventType} is read whole by ${inferenceShapes
+            ->Array.filter(s =>
+              s->Reventless.DcbScopeInference.wholeTypesOf->Array.includes(eventType)
+            )
+            ->Array.map(s => s.sliceName)
+            ->Array.join(
+              ", ",
+            )}; its writers tag it ${Reventless.DcbTag.kindTagKey}:${eventType} and move that fence`,
+        )
       )
 
       // Warn on composite (multi-tag) decision reads that would silently miss an

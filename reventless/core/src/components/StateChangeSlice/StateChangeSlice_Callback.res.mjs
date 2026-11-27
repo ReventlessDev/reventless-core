@@ -36,6 +36,7 @@ function Make(Spec) {
     let queryEventTypes = decoder.eventTypes;
     let producedEventTypes = DcbTag$Reventless.extractAllVariantNames(Spec.eventSchema);
     let queryEventTypesWithOwn = queryEventTypes.concat(producedEventTypes.filter(t => !queryEventTypes.includes(t)));
+    let wholeEventTypes = DcbTag$Reventless.wholeEventTypesOfSchema(Spec.consumedEventSchema);
     let sealRawEvents = async raws => {
       let out = [];
       let failure;
@@ -156,7 +157,7 @@ function Make(Spec) {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, EffectLogger$ReventlessCore.idsOf(undefined, undefined, cmdJson.meta), `handling command: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
       let asksForRepeat = Message$ReventlessCore.hasStableMsgId(command$p.meta);
-      let query = DcbTag$Reventless.buildQueryFromCommand(asksForRepeat ? queryEventTypesWithOwn : queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, pairEventTypes);
+      let query = DcbTag$Reventless.buildQueryFromCommand(asksForRepeat ? queryEventTypesWithOwn : queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, pairEventTypes, wholeEventTypes);
       let queryDetail = query.map(qi => {
         let ts = qi.eventTypes;
         let types = ts !== undefined ? ts.map(LogFormat$ReventlessCore.bold).join("|") : "*";
@@ -279,7 +280,7 @@ function Make(Spec) {
             strongConsistency = false;
             break;
         }
-        return Effect$1.flatMap(fencesRead, fences => Effect$1.flatMap(Effect$1.tap(Stream.runFold(Stream.mapEffect(DcbTag$Reventless.readsNothing(query) ? Stream$1.empty : dcbEventLog.readStream(query, afterPos, strongConsistency), openRaw), [
+        return Effect$1.flatMap(fencesRead, fences => Effect$1.flatMap(Effect$1.tap(Effect$1.tap(Stream.runFold(Stream.mapEffect(DcbTag$Reventless.readsNothing(query) ? Stream$1.empty : dcbEventLog.readStream(query, afterPos, strongConsistency), openRaw), [
           baseState,
           afterPos,
           [],
@@ -320,6 +321,18 @@ function Make(Spec) {
           ) + `: ` + reads.length.toString() + ` event(s)` + (
             reads.length === 0 ? "" : ` [` + reads.join(", ") + `]`
           ));
+        }), param => {
+          let large = Stdlib_Array.filterMap(wholeEventTypes, t => {
+            let read = Stdlib_Option.getOr(seen[DcbFenceCount$Reventless.seenKey(DcbTag$Reventless.kindTag(t), t)], 0);
+            if (read > 100) {
+              return t + `: ` + read.toString();
+            }
+          }).join(", ");
+          if (large === "") {
+            return Effect$1.succeed();
+          } else {
+            return EffectLogger$ReventlessCore.logWarn(comp, undefined, ids, `read whole more than ` + (100).toString() + ` events of a kind (` + large + `); a whole read is meant for kinds with few events`);
+          }
         }), param => {
           let repeated = param[4];
           let owners = param[3];
@@ -401,11 +414,12 @@ function Make(Spec) {
                   let baseTags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e);
                   let keys = tagKeysByEventType[eventType];
                   let indexedTags = keys !== undefined ? baseTags.filter(t => keys.includes(t.key)) : baseTags;
+                  let tags = DcbTag$Reventless.withKindTag(indexedTags, eventType, Stdlib_Option.getOr(tagKeysByEventType[eventType], []));
                   let meta = Message$ReventlessCore.deriveMeta(parentMeta, undefined);
                   return {
                     eventType: eventType,
                     data: match[1],
-                    tags: indexedTags,
+                    tags: tags,
                     meta: meta
                   };
                 });
@@ -537,11 +551,12 @@ function Make(Spec) {
       let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
       let crossPartitionPairs = crossPartitionPairsOpt !== undefined ? crossPartitionPairsOpt : [];
       let partitionTag$1 = partitionTag !== undefined ? partitionTag : Stdlib_Lazy.get(slicePartitionTag);
-      let payloadTagKeys = DcbTag$Reventless.commandPayloadTagKeys(scopeShape, partitionTag$1, crossPartitionTagKeys);
+      let crossPartitionTagKeys$1 = Primitive_object.equal(wholeEventTypes, []) || crossPartitionTagKeys.includes(DcbTag$Reventless.kindTagKey) ? crossPartitionTagKeys : crossPartitionTagKeys.concat([DcbTag$Reventless.kindTagKey]);
+      let payloadTagKeys = DcbTag$Reventless.commandPayloadTagKeys(scopeShape, partitionTag$1, crossPartitionTagKeys$1);
       let pairEventTypes = DcbScopeInference$Reventless.pairEventTypes(crossPartitionPairs, Spec.name);
       return Stream$1.runCollect(Stream.mapEffect(stream, param => {
         let reference = param.reference;
-        return Effect$1.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, pairEventTypes, partitionTag$1, dcbEventLog, param.command), result => {
+        return Effect$1.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys$1, payloadTagKeys, pairEventTypes, partitionTag$1, dcbEventLog, param.command), result => {
           if (result.TAG === "Ok") {
             return {
               TAG: "Ok",

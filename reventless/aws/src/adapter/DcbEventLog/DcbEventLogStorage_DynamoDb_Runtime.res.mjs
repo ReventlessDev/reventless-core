@@ -145,8 +145,9 @@ function toItem(position, event, partitionTag, recordedAt) {
     let attrName = tagToAttributeName(tag.key);
     item[attrName] = tag.value;
   });
-  if (event.tags.length > 1) {
-    let composite = compositeTagKey(event.tags);
+  let entityTags = event.tags.filter(t => t.key !== DcbTag$Reventless.kindTagKey);
+  if (entityTags.length > 1) {
+    let composite = compositeTagKey(entityTags);
     item["tag_composite"] = composite;
   }
   return item;
@@ -969,10 +970,43 @@ function buildPairFenceItems(tableName, events, pairFenceTypes, cond, newPositio
   return Stdlib_Array.filterMap(pairFenceOps(events, pairFenceTypes, cond), op => buildPairFenceItem(tableName, op, newPosition));
 }
 
-function buildFenceConditionCheck(tableName, tag, consumedTypes, after) {
+function buildFenceConditionCheck(tableName, tag, consumedTypes, after, readCountsOpt) {
+  let readCounts = readCountsOpt !== undefined ? readCountsOpt : ({});
   let names = {};
-  if (after !== undefined) {
+  if (consumedTypes.some(t => Stdlib_Option.isSome(readCounts[t]))) {
+    let values = {};
     let conditionExpression = consumedTypes.map((t, i) => {
+      let ph = `#c` + i.toString();
+      let match = readCounts[t];
+      if (match === undefined) {
+        if (after !== undefined) {
+          names[ph] = fenceTypeAttr(t);
+          values[":after"] = after;
+          return `(attribute_not_exists(` + ph + `) OR ` + ph + ` <= :after)`;
+        } else {
+          names[ph] = fenceTypeAttr(t);
+          return `attribute_not_exists(` + ph + `)`;
+        }
+      }
+      let v = `:s` + i.toString();
+      names[ph] = fenceCountAttr(t);
+      values[v] = match;
+      if (match === 0) {
+        return `(attribute_not_exists(` + ph + `) OR ` + ph + ` = ` + v + `)`;
+      } else {
+        return ph + ` = ` + v;
+      }
+    }).join(" AND ");
+    return {
+      Key: fenceKey(tag),
+      TableName: tableName,
+      ConditionExpression: conditionExpression,
+      ExpressionAttributeNames: names,
+      ExpressionAttributeValues: values
+    };
+  }
+  if (after !== undefined) {
+    let conditionExpression$1 = consumedTypes.map((t, i) => {
       let ph = `#c` + i.toString();
       names[ph] = fenceTypeAttr(t);
       return `(attribute_not_exists(` + ph + `) OR ` + ph + ` <= :after)`;
@@ -980,7 +1014,7 @@ function buildFenceConditionCheck(tableName, tag, consumedTypes, after) {
     return {
       Key: fenceKey(tag),
       TableName: tableName,
-      ConditionExpression: conditionExpression,
+      ConditionExpression: conditionExpression$1,
       ExpressionAttributeNames: names,
       ExpressionAttributeValues: Object.fromEntries([[
           ":after",
@@ -988,7 +1022,7 @@ function buildFenceConditionCheck(tableName, tag, consumedTypes, after) {
         ]])
     };
   }
-  let conditionExpression$1 = consumedTypes.map((t, i) => {
+  let conditionExpression$2 = consumedTypes.map((t, i) => {
     let ph = `#c` + i.toString();
     names[ph] = fenceTypeAttr(t);
     return `attribute_not_exists(` + ph + `)`;
@@ -996,7 +1030,7 @@ function buildFenceConditionCheck(tableName, tag, consumedTypes, after) {
   return {
     Key: fenceKey(tag),
     TableName: tableName,
-    ConditionExpression: conditionExpression$1,
+    ConditionExpression: conditionExpression$2,
     ExpressionAttributeNames: names
   };
 }
@@ -1246,6 +1280,14 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     }
   };
+  let pushCheck = tag => {
+    let k = tag.key + `:` + tag.value;
+    if (!checkKeySet.has(k)) {
+      checkKeySet.add(k);
+      conditionCheckTags.push(tag);
+      return;
+    }
+  };
   cond$1.query.forEach(qi => {
     let tags = qi.tags;
     if (tags === undefined) {
@@ -1265,21 +1307,18 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
     }
     let tag = tags[0];
     if (crossPartitionTagKeys.includes(tag.key)) {
-      return pushUpdate(tag);
+      if (Primitive_object.equal(producedTypesFor(tag), [])) {
+        return pushCheck(tag);
+      } else {
+        return pushUpdate(tag);
+      }
     }
     let match$1 = cond$1.after;
     if (match$1 !== undefined) {
       if (isPartition(tag) || isCompositeQueryTag(tag)) {
         return pushUpdate(tag);
       } else {
-        let k = tag.key + `:` + tag.value;
-        if (!checkKeySet.has(k)) {
-          checkKeySet.add(k);
-          conditionCheckTags.push(tag);
-          return;
-        } else {
-          return;
-        }
+        return pushCheck(tag);
       }
     } else if (isPartition(tag)) {
       return pushUpdate(tag);
@@ -1340,7 +1379,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     } else {
       return {
-        ConditionCheck: buildFenceConditionCheck(table.name, tag, consumedTypes, cond$1.after)
+        ConditionCheck: buildFenceConditionCheck(table.name, tag, consumedTypes, cond$1.after, readCountsFor(tag))
       };
     }
   });

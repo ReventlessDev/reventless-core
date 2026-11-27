@@ -822,6 +822,113 @@ describe("DcbTag:", () => {
       },
     )
 
+    // --- Whole reads: the types a slice reads every event of, by their kind tag ---
+
+    let kindOf = (eventType): Reventless.DcbTag.tag => {
+      key: Reventless.DcbTag.kindTagKey,
+      value: eventType,
+    }
+
+    testSync(
+      "a type read whole leaves the tagged clause for a clause by its kind",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes,
+            ~schema=DcbFixtures.singleTagCommandSchema,
+            ~value=createItem,
+            ~wholeEventTypes=["EventB"],
+          ),
+        )->toEqual([
+          {Reventless.DcbTag.eventTypes: ["EventA"], tags: [itemTag]},
+          {eventTypes: ["EventB"], tags: [kindOf("EventB")]},
+        ]),
+    )
+
+    testSync(
+      "each type read whole gets a clause of its own, beside every tagged clause",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes=["EventA", "EventB", "EventC"],
+            ~schema=DcbFixtures.crossEntityCommandSchema,
+            ~value=DcbFixtures.PlaceOrder({
+              orderId: "ord-1",
+              customerId: "cust-1",
+              productId: ["prod-1"],
+            }),
+            ~wholeEventTypes=["EventB", "EventC"],
+          ),
+        )->toEqual([
+          {
+            Reventless.DcbTag.eventTypes: ["EventA"],
+            tags: [{key: "orderId", value: "ord-1"}],
+          },
+          {eventTypes: ["EventA"], tags: [{key: "productId", value: "prod-1"}]},
+          {eventTypes: ["EventB"], tags: [kindOf("EventB")]},
+          {eventTypes: ["EventC"], tags: [kindOf("EventC")]},
+        ]),
+    )
+
+    testSync(
+      "a command with no tags reads the whole kinds by their kind, the other types by type",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes,
+            ~schema=DcbFixtures.emptyVariantSchema,
+            ~value=DcbFixtures.Empty,
+            ~wholeEventTypes=["EventB"],
+          ),
+        )->toEqual([
+          {Reventless.DcbTag.eventTypes: ["EventA"], tags: []},
+          {eventTypes: ["EventB"], tags: [kindOf("EventB")]},
+        ]),
+    )
+
+    testSync(
+      "a command with no tags that reads only whole kinds reads them by their kind alone",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes=["EventB"],
+            ~schema=DcbFixtures.emptyVariantSchema,
+            ~value=DcbFixtures.Empty,
+            ~wholeEventTypes=["EventB"],
+          ),
+        )->toEqual([{Reventless.DcbTag.eventTypes: ["EventB"], tags: [kindOf("EventB")]}]),
+    )
+
+    testSync(
+      "an event is tagged by its kind only where its type is indexed by the kind key",
+      () => {
+        let tags: array<Reventless.DcbTag.tag> = [itemTag]
+        expect(
+          tags->Reventless.DcbTag.withKindTag(
+            ~eventType="EventB",
+            ~indexedKeys=["itemId", Reventless.DcbTag.kindTagKey],
+          ),
+        )->toEqual([itemTag, kindOf("EventB")])
+        expect(
+          tags->Reventless.DcbTag.withKindTag(~eventType="EventA", ~indexedKeys=["itemId"]),
+        )->toEqual([itemTag])
+      },
+    )
+
+    testSync(
+      "a consumedEvent schema marked read whole says so on its shapes",
+      () => {
+        let schema = DcbFixtures.mixedEventSchema->Reventless.DcbTag.readWhole(["EventB"])
+        expect(Reventless.DcbTag.wholeEventTypesOfSchema(schema))->toEqual(["EventB"])
+        expect(
+          Reventless.DcbTag.eventShapesOfSchema(schema)->Array.map(
+            e => (e.eventType, e.whole->Option.getOr(false)),
+          ),
+        )->toEqual([("EventA", false), ("EventB", true), ("EventC", false)])
+        expect(Reventless.DcbTag.wholeEventTypesOfSchema(DcbFixtures.mixedEventSchema))->toEqual([])
+      },
+    )
+
     // --- Vacuous-clause narrowing (Issue 14) ---
 
     let orderTagKeys = Reventless.DcbTag.extractTagKeysByEventType(DcbFixtures.orderEventLogSchema)

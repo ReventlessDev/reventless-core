@@ -835,6 +835,120 @@ describe("DcbScopeInference:", () => {
     )
   })
 
+  describe("a decision reads a small kind of event whole", () => {
+    let whole = (eventType, idFields): DSI.eventShape => {eventType, idFields, whole: true}
+    let setDeliveryFee = slice(
+      "SetDeliveryFee",
+      ~command=[scal("deliveryOptionId")],
+      ~consumed=[ev("DeliveryFeeSet", [scal("deliveryOptionId")])],
+      ~produced=[ev("DeliveryFeeSet", [scal("deliveryOptionId")])],
+      ~chapter="Delivery",
+    )
+    let placeOrder = (~fees) =>
+      slice(
+        "PlaceOrder",
+        ~command=[scal("orderId"), scal("customerId"), arr("productIds")],
+        ~consumed=[
+          ev("OrderPlaced", [scal("orderId")]),
+          ev("CatalogProductSynced", [scal("productId")]),
+          fees,
+        ],
+        ~produced=[ev("OrderPlaced", [scal("orderId"), scal("customerId"), arr("productIds")])],
+        ~chapter="Order",
+      )
+    // Its chapter's other events carry the order alone, which settles PlaceOrder on orderId.
+    let shipOrder = slice(
+      "ShipOrder",
+      ~command=[scal("orderId")],
+      ~consumed=[ev("OrderPlaced", [scal("orderId")])],
+      ~produced=[ev("OrderShipped", [scal("orderId")])],
+      ~chapter="Order",
+    )
+    let boundary = [
+      setDeliveryFee,
+      shipOrder,
+      placeOrder(~fees=whole("DeliveryFeeSet", [scal("deliveryOptionId")])),
+    ]
+    let d = DSI.infer(boundary)
+
+    testSync(
+      "the slice keeps its partition, and the boundary knows the kind it reads whole",
+      () => {
+        expect(d.ambiguities)->toEqual([])
+        expect(d.partitionBySlice->Dict.get("PlaceOrder"))->toEqual(Some("orderId"))
+        expect(d.partitionBySlice->Dict.get("SetDeliveryFee"))->toEqual(Some("deliveryOptionId"))
+        expect(d.wholeEventTypes)->toEqual(["DeliveryFeeSet"])
+      },
+    )
+
+    testSync(
+      "the kind key is read across partitions, and the kind's writers index it",
+      () => {
+        expect(d.crossPartitionTagKeys)->toEqual([DSI.kindTagKey])
+        expect(d.tagKeysByEventType->Dict.get("DeliveryFeeSet"))->toEqual(
+          Some(["deliveryOptionId", DSI.kindTagKey]),
+        )
+        expect(d.tagKeysByEventType->Dict.get("OrderPlaced"))->toEqual(Some(["orderId"]))
+      },
+    )
+
+    testSync(
+      "a case read whole takes no part in the slice's partition or its pairs",
+      () => {
+        let without = DSI.infer([
+          setDeliveryFee,
+          shipOrder,
+          {
+            ...placeOrder(~fees=ev("OrderPlaced", [])),
+            consumed: [
+              ev("OrderPlaced", [scal("orderId")]),
+              ev("CatalogProductSynced", [scal("productId")]),
+            ],
+          },
+        ])
+        expect(
+          d.partitionBySlice
+          ->Dict.toArray
+          ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b)),
+        )->toEqual(
+          without.partitionBySlice
+          ->Dict.toArray
+          ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b)),
+        )
+        expect(d.crossPartitionPairs)->toEqual([])
+        expect(
+          placeOrder(~fees=whole("DeliveryFeeSet", [cross("orderId")]))
+          ->DSI.foreignArms
+          ->Array.map(e => e.eventType),
+        )->toEqual(["CatalogProductSynced"])
+      },
+    )
+
+    testSync(
+      "a boundary that reads nothing whole adds no kind",
+      () => {
+        let plain = DSI.infer([
+          setDeliveryFee,
+          shipOrder,
+          placeOrder(~fees=ev("DeliveryFeeSet", [])),
+        ])
+        expect(plain.wholeEventTypes)->toEqual([])
+        expect(plain.crossPartitionTagKeys)->toEqual([])
+      },
+    )
+
+    testSync(
+      "a kind read whole that no slice of the boundary writes is refused",
+      () => {
+        let orphan = [placeOrder(~fees=whole("DeliveryFeeSet", []))]
+        expect(
+          Reventless.DcbValidation.validateWholeReads(~shapes=orphan)->Array.map(e => e.sliceName),
+        )->toEqual(["PlaceOrder"])
+        expect(Reventless.DcbValidation.validateWholeReads(~shapes=boundary))->toEqual([])
+      },
+    )
+  })
+
   describe("ambiguity surfacing", () => {
     // A pure join: produces an event carrying two foreign keys, owns neither.
     let aOwner = slice("A", ~produced=[ev("AHappened", [scal("aId")])])

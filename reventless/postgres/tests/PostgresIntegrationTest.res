@@ -142,6 +142,52 @@ switch processEnv->Dict.get("PG_URL") {
       }
     })
 
+    testPromise(
+      "a kind read whole is read across partitions, and a write of it conflicts",
+      async () => {
+        let (_n, ops, _s) = DcbEventLogStorage_Postgres.makeStorage(
+          ~pool,
+          ~name="dcb-whole",
+          ~indexes=[],
+          ~partitionTag=DcbTag.ByEventType(
+            Dict.fromArray([("DeliveryFeeSet", "deliveryOptionId"), ("OrderPlaced", "orderId")]),
+          ),
+          ~crossPartitionTagKeys=[DcbTag.kindTagKey],
+          ~opts,
+        )
+        let fee = option =>
+          stored(
+            "DeliveryFeeSet",
+            [{key: "deliveryOptionId", value: option}, DcbTag.kindTag("DeliveryFeeSet")],
+            jsonObj([("deliveryOptionId", JSON.Encode.string(option))]),
+          )
+        let order = orderId =>
+          stored("OrderPlaced", [{key: "orderId", value: orderId}], jsonObj([]))
+        let query = (orderId): DcbTag.query => [
+          {eventTypes: ["OrderPlaced"], tags: [{key: "orderId", value: orderId}]},
+          {eventTypes: ["DeliveryFeeSet"], tags: [DcbTag.kindTag("DeliveryFeeSet")]},
+        ]
+        let _ = await ops.append([fee("standard")])
+        let _ = await ops.append([fee("express")])
+
+        let read = await ops.read(~query=query("o1"))
+        expect(read.events->Array.map(e => e.eventType))->toEqual([
+          "DeliveryFeeSet",
+          "DeliveryFeeSet",
+        ])
+        let quiet = await ops.append(
+          [order("o1")],
+          ~condition={query: query("o1"), after: ?read.headPosition},
+        )
+        expect(quiet->Result.isOk)->toBe(true)
+
+        let head = (await ops.read(~query=query("o2"))).headPosition
+        let _ = await ops.append([fee("standard")])
+        let raced = await ops.append([order("o2")], ~condition={query: query("o2"), after: ?head})
+        expect(raced == Error(ReventlessInfra.DcbEventLog.Conflict))->toBe(true)
+      },
+    )
+
     let writeSkew = (strategy, logName) =>
       testPromise(
         `write-skew: exactly one of two concurrent appends wins (${logName})`,

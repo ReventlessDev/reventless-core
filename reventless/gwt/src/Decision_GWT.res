@@ -586,7 +586,13 @@ module Make = (Spec: DecisionSpec, Decision: Decision with module Spec := Spec):
   // because it threads a real tagged log; this lets the per-slice GWT catch it
   // too, rather than folding an unreachable event straight through.
   let emittedEventTypes = Reventless.DcbDecode.makeDecoder(Spec.eventSchema).eventTypes
-  let consumedTagKeysByType = Reventless.DcbTag.extractTagKeysByEventType(Spec.consumedEventSchema)
+  // A type read whole is read by its kind, never by a tag of the command.
+  let wholeEventTypes = Reventless.DcbTag.wholeEventTypesOfSchema(Spec.consumedEventSchema)
+  let consumedTagKeysByType =
+    Reventless.DcbTag.extractTagKeysByEventType(Spec.consumedEventSchema)
+    ->Dict.toArray
+    ->Array.filter(((t, _)) => !(wholeEventTypes->Array.includes(t)))
+    ->Dict.fromArray
 
   let queryTagKeys = (query: Reventless.DcbTag.query): array<string> =>
     query->Array.flatMap(qi => qi.tags->Option.mapOr([], tags => tags->Array.map(t => t.key)))
@@ -631,6 +637,7 @@ module Make = (Spec: DecisionSpec, Decision: Decision with module Spec := Spec):
       ~tagKeysByEventType,
       ~crossPartitionTagKeys,
       ~payloadTagKeys,
+      ~wholeEventTypes,
     )
     let condition: Reventless.DcbTag.appendCondition = {query: query}
     derivedCondition := Some(condition)

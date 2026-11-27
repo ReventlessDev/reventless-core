@@ -48,6 +48,42 @@ describe("PlaceOrder StateChangeSlice", () => {
     )
   )
 
+  // Every method's fee is read whole, though the command names none of them by a
+  // tag; the order records its own method's, the latest one set.
+  // scenario-id: 27497f60-2fd7-475b-bb91-3b712e371d71
+  test("a placed order records the fee of its shipping method", () =>
+    givenEvents([
+      CatalogProductSynced({
+        productId: p1,
+        name: fathomDock,
+        price: dockPrice,
+      }),
+      ShippingFeeSet({shippingMethodId: "Standard", fee: standardFee}),
+      ShippingFeeSet({shippingMethodId: "Express", fee: expressFee}),
+      ShippingFeeSet({shippingMethodId: "Standard", fee: raisedStandardFee}),
+    ])
+    ->whenCmd(
+      PlaceOrder({
+        orderId: o1,
+        customerId: c1,
+        lineItems: [{productId: p1, quantity: 1}],
+        shippingMethod: Standard,
+      }),
+    )
+    ->thenEvent(
+      OrderPlaced({
+        orderId: o1,
+        customerId: c1,
+        productIds: [p1],
+        lines: [dockLine],
+        total: dockPrice,
+        shippingMethod: Standard,
+        firstProductName: fathomDock,
+        shippingFee: raisedStandardFee,
+      }),
+    )
+  )
+
   // The reference the platform made for the order travels onto the event, which
   // is tagged by it so the order can be found by what a shopper reads out.
   // scenario-id: 489df39f-a823-44ea-a1bf-5897b61aeb7b

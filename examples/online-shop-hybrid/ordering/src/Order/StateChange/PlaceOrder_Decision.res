@@ -13,6 +13,8 @@ type state = {
   availableProductIds: array<CatalogSpec.ProductId.t>,
   shelf: array<(CatalogSpec.ProductId.t, shelfProduct)>,
   productImages: array<(CatalogSpec.ProductId.t, Reventless.UploadableImage.t)>,
+  // Each shipping method's fee, by the method's name.
+  shippingFees: array<(string, Reventless.Money.t)>,
 }
 
 let initialState = {
@@ -20,7 +22,16 @@ let initialState = {
   availableProductIds: [],
   shelf: [],
   productImages: [],
+  shippingFees: [],
 }
+
+// The name a method's fee is kept under.
+let shippingMethodId = method =>
+  switch method {
+  | Standard => "Standard"
+  | Express => "Express"
+  | Pickup => "Pickup"
+  }
 
 // Last writer wins, which is what a rename is: the pair is replaced rather than
 // appended, so the fold does not grow without bound as a product is renamed.
@@ -73,6 +84,10 @@ let evolve = (state, event: consumedEvent) =>
   | CatalogProductWithdrawn({productId}) => {
       ...state,
       availableProductIds: state.availableProductIds->Array.filter(id => id != productId),
+    }
+  | ShippingFeeSet({shippingMethodId, fee}) => {
+      ...state,
+      shippingFees: state.shippingFees->replacing(shippingMethodId, fee),
     }
   }
 
@@ -172,6 +187,7 @@ let decide = (state, command) =>
               let first = lines->Array.get(0)->Option.map(line => line.productId)
               let firstProductName = lines->Array.get(0)->Option.map(line => line.name)
               let firstProductImage = first->Option.flatMap(id => state.productImages->lookup(id))
+              let shippingFee = state.shippingFees->lookup(shippingMethodId(shippingMethod))
               Ok([
                 OrderPlaced({
                   orderId,
@@ -184,6 +200,7 @@ let decide = (state, command) =>
                   ?deliveryWindow,
                   ?firstProductName,
                   ?firstProductImage,
+                  ?shippingFee,
                 }),
               ])
             }

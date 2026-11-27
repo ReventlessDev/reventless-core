@@ -675,6 +675,27 @@ type event =
 type error = unit
 EOF
 
+# @readWhole: a consumed case read whole, beside what the command's tags read.
+# Named on the wire, so @as wins over the constructor.
+cat > "$DCB/src/StateChange/QuoteOrder.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = QuoteOrder({orderId: string})
+
+@schema
+type consumedEvent =
+  | OrderOpened({orderId: string})
+  | @readWhole DeliveryFeeSet({deliveryOption: string, fee: float})
+  | @readWhole @as("TaxRateSet") TaxRateChanged({rate: float})
+
+@schema
+type event = OrderQuoted({orderId: string})
+
+@schema
+type error = unit
+EOF
+
 # Slice file whose name ends in a top-level-only suffix (Plugin)
 # Entity name must retain the suffix
 cat > "$DCB/src/StateChange/SyncPlugin.res" <<'EOF'
@@ -2363,6 +2384,13 @@ assert_js_contains     "$JS" '.partition'            "@crossPartition: courseId 
 assert_js_not_contains "$JS" 'DcbTag.string'         "@crossPartition: studentId uses crossPartition, not string"
 
 echo ""
+echo "=== Test: @readWhole marks the cases on the consumedEvent schema ==="
+JS="$DCB/src/StateChange/QuoteOrder.res.mjs"
+assert_js_contains "$JS" 'readWhole(consumedEventSchema, ' "@readWhole: the schema is shadowed by DcbTag.readWhole"
+assert_js_contains "$JS" '"DeliveryFeeSet",' "@readWhole: a marked case is named"
+assert_js_contains "$JS" '"TaxRateSet"' "@readWhole: a case is named as it is on the wire (@as)"
+
+echo ""
 echo "=== Test: @noDcbTag suppresses auto-tagging on *Id field ==="
 JS="$DCB/src/StateChange/OrderPlacement.res.mjs"
 assert_js_not_contains "$JS" 'noDcbTag'  "@noDcbTag: annotation stripped from output"
@@ -3478,6 +3506,31 @@ else
   fi
 fi
 rm -f "$ERROR/src/StateChange/Shelf_Decision.res"
+
+echo ""
+echo "=== Test: PPX error — @readWhole outside a consumedEvent ==="
+cat > "$ERROR/src/StateChange/SetFee.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = SetFee({deliveryOption: string})
+
+@schema
+type event = | @readWhole FeeSet({deliveryOption: string})
+
+@schema
+type error = unit
+EOF
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@readWhole on an event case" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q 'only its cases can be read whole'; then
+    pass "@readWhole on a case of a produced event fails the build"
+  else
+    fail "@readWhole on an event case" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/StateChange/SetFee.res"
 
 # ── The three removed command-edge attributes ───────────────────────────────
 #

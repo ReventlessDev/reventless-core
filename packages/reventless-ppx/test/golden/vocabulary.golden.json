@@ -157,6 +157,13 @@
       "readBy": [ "NoApiAnnotation", "ReventlessPpx" ]
     },
     {
+      "name": "readWhole",
+      "positions": [ "case.consumedEvent" ],
+      "args": "none",
+      "summary": "Reads every event of this kind, beside what the command's tags read; meant for kinds with few events.",
+      "readBy": [ "ReadWholeInference" ]
+    },
+    {
       "name": "authorize",
       "positions": [ "case.command" ],
       "args": "required",

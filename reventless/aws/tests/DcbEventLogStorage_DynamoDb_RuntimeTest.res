@@ -617,6 +617,86 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
       },
     )
   })
+
+  // A reader of a cross-partition tag whose append carries none of it: a kind read whole
+  // (PlaceOrder reading every DeliveryFeeSet), or a reference read whose key is payload on the
+  // reader's own event. Its fence is checked, by the count the reader read.
+  describe("a cross-partition clause the append does not carry is checked", () => {
+    let kind = Reventless.DcbTag.kindTag("DeliveryFeeSet")
+    let fenceId = `fence#${Reventless.DcbTag.kindTagKey}:DeliveryFeeSet`
+    let orderPlaced = event("OrderPlaced", [tag("orderId", "o1")])
+    let query: Reventless.DcbTag.query = [
+      {tags: [tag("orderId", "o1")], eventTypes: ["OrderPlaced"]},
+      {tags: [kind], eventTypes: ["DeliveryFeeSet"]},
+    ]
+    let build = cond =>
+      Runtime.buildConditionalTransactItems(
+        table,
+        [orderPlaced],
+        cond,
+        "100",
+        ~partitionTag=Reventless.DcbTag.Simple({key: "orderId"}),
+        ~crossPartitionTagKeys=[Reventless.DcbTag.kindTagKey],
+      )
+    let checkOf = items =>
+      findFence(items, fenceId)->Option.flatMap(
+        i => i.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.conditionCheck,
+      )
+
+    testSync(
+      "by position, where its fence is not counted",
+      () => {
+        let items = build({query, after: "50"})
+        expect(isCheck(findFence(items, fenceId)))->toBe(true)
+        expect(checkOf(items)->Option.map(c => c.conditionExpression))->toEqual(
+          Some("(attribute_not_exists(#c0) OR #c0 <= :after)"),
+        )
+      },
+    )
+
+    testSync(
+      "by the count the reader read, where it is",
+      () => {
+        let items = build({
+          query,
+          after: "50",
+          fenceCounts: [{tag: kind, eventType: "DeliveryFeeSet", count: 2}],
+        })
+        let check = checkOf(items)
+        expect(check->Option.map(c => c.conditionExpression))->toEqual(Some("#c0 = :s0"))
+        expect(
+          check
+          ->Option.flatMap(c => c.expressionAttributeNames)
+          ->Option.flatMap(n => n->Dict.get("#c0")),
+        )->toEqual(Some("n#DeliveryFeeSet"))
+      },
+    )
+
+    testSync(
+      "and a writer of the kind moves and counts its fence",
+      () => {
+        let feeSet = event("DeliveryFeeSet", [tag("deliveryOptionId", "standard"), kind])
+        let items = Runtime.buildConditionalTransactItems(
+          table,
+          [feeSet],
+          {
+            query: [{tags: [tag("deliveryOptionId", "standard")], eventTypes: ["DeliveryFeeSet"]}],
+            after: "50",
+          },
+          "100",
+          ~partitionTag=Reventless.DcbTag.Simple({key: "deliveryOptionId"}),
+          ~crossPartitionTagKeys=[Reventless.DcbTag.kindTagKey],
+        )
+        let bump =
+          findFence(items, fenceId)->Option.flatMap(
+            i => i.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update,
+          )
+        expect(bump->Option.mapOr(false, u => u.updateExpression->String.includes("ADD")))->toBe(
+          true,
+        )
+      },
+    )
+  })
 })
 
 describe(
@@ -780,6 +860,36 @@ describe("Runtime.toItem — tag_composite is keyed on the event's entity tags",
 
   testSync("stored tag_composite equals the key a composite read would query", () => {
     expect(storedComposite)->toEqual(Some(Runtime.compositeTagKey(entityTags)))
+  })
+})
+
+describe("Runtime.toItem — the kind tag stays out of tag_composite", () => {
+  let stored = (tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+    eventType: "DeliveryFeeSet",
+    data: JSON.Object(Dict.make()),
+    tags,
+    meta: testMeta(),
+  }
+  let itemOf = tags =>
+    Runtime.toItem("100", stored(tags), ~recordedAt="2026-07-08T00:00:00Z")
+    ->JSON.Decode.object
+    ->Option.getOr(Dict.make())
+  let kind = Reventless.DcbTag.kindTag("DeliveryFeeSet")
+
+  testSync("an entity tag and the kind tag: no composite key, both GSI attributes", () => {
+    let item = itemOf([tag("deliveryOptionId", "standard"), kind])
+    expect(item->Dict.get("tag_composite"))->toEqual(None)
+    expect(item->Dict.get(`tag_${Reventless.DcbTag.kindTagKey}`))->toEqual(
+      Some(JSON.Encode.string("DeliveryFeeSet")),
+    )
+  })
+
+  testSync("two entity tags and the kind tag: the composite key of the two", () => {
+    let entity = [tag("deliveryOptionId", "standard"), tag("regionId", "eu")]
+    let item = itemOf(entity->Array.concat([kind]))
+    expect(item->Dict.get("tag_composite"))->toEqual(
+      Some(Runtime.compositeTagKey(entity)->JSON.Encode.string),
+    )
   })
 })
 

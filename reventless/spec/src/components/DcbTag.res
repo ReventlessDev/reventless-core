@@ -174,6 +174,38 @@ let markDeclared = (schema: S.t<'a>): S.t<'a> =>
 let markDeclaredForKey = (schema: S.t<'a>, ~key: string): S.t<'a> =>
   schema->markForKey(~key)->S.Metadata.set(~id=dcbDeclaredTagId, true)
 
+/** Internal sury metadata ID on a `consumedEvent` schema: the cases its slice reads whole. */
+let dcbReadWholeId: S.Metadata.Id.t<array<string>> = S.Metadata.Id.make(
+  ~namespace="dcb",
+  ~name="readWhole",
+)
+
+/**
+Marks the event types a slice reads whole on its `consumedEvent` schema: every event of each, by
+the kind tag, beside what its command's tags read. The PPX emits it for `@readWhole` cases.
+*/
+let readWhole = (schema: S.t<'a>, eventTypes: array<string>): S.t<'a> =>
+  schema->S.Metadata.set(~id=dcbReadWholeId, eventTypes)
+
+/** The event types a `consumedEvent` schema reads whole; empty for one that marks none. */
+let wholeEventTypesOfSchema = (schema: S.t<'a>): array<string> =>
+  schema->S.Metadata.get(~id=dcbReadWholeId)->Option.getOr([])
+
+/** See `DcbScopeInference.kindTagKey`. */
+let kindTagKey = DcbScopeInference.kindTagKey
+
+/** The kind tag of an event type. */
+let kindTag = (eventType: string): tag => {key: kindTagKey, value: eventType}
+
+/**
+An event's tags with its kind tag added when its type is indexed by the kind key, which only a
+type some slice reads whole is. The tag comes from the type, not from a field.
+*/
+let withKindTag = (tags: array<tag>, ~eventType: string, ~indexedKeys: array<string>): array<tag> =>
+  indexedKeys->Array.includes(kindTagKey) && !(tags->Array.some(t => t.key == kindTagKey))
+    ? tags->Array.concat([kindTag(eventType)])
+    : tags
+
 /**
 A sury string schema annotated as a DCB tag field.
 
@@ -998,6 +1030,11 @@ slice reads by that key across partitions. A single-tag clause on such a key is
 split in two: the other types stay in it, read from the partition, and these go
 to a clause marked `crossPartition`, which reads them by the tag's index.
 
+`~wholeEventTypes` (`wholeEventTypesOfSchema`) are the types the slice reads whole. They leave
+every tagged clause and each gets a clause by its kind tag, which the boundary reads across
+partitions. A command with no tags reads them by those clauses too, which are fenced where a clause
+by type alone is not, and keeps its clause by type for the other types.
+
 @example
 ```rescript
 // Single-entity command → single AND clause
@@ -1027,9 +1064,11 @@ let buildQueryFromCommand = (
   ~crossPartitionTagKeys: array<string>=[],
   ~payloadTagKeys: array<string>=[],
   ~pairEventTypes: dict<array<string>>=Dict.make(),
+  ~wholeEventTypes: array<string>=[],
 ): query => {
-  let typesForTags = clauseTags =>
-    narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType)
+  let whole = eventTypes->Array.filter(t => wholeEventTypes->Array.includes(t))
+  let byTags = eventTypes->Array.filter(t => !(wholeEventTypes->Array.includes(t)))
+  let typesForTags = clauseTags => narrowEventTypesForTags(byTags, clauseTags, tagKeysByEventType)
   let decidedBy = (tags: array<tag>) =>
     tags->Array.filter(tag => !(payloadTagKeys->Array.includes(tag.key)))
   let splitPairs = (qi: queryItem): array<queryItem> =>
@@ -1073,7 +1112,18 @@ let buildQueryFromCommand = (
     }
   }
   // A composite clause is left whole: the index reads by one tag only.
-  clauses->Array.flatMap(splitPairs)
+  let clauses = clauses->Array.flatMap(splitPairs)
+  let tagged = clauses->Array.some(qi => qi.tags->Option.mapOr(false, tags => tags != []))
+  switch whole {
+  | [] => clauses
+  | whole =>
+    let kinds = whole->Array.map(t => {eventTypes: [t], tags: [kindTag(t)]})
+    switch (tagged, byTags) {
+    | (true, _) => clauses->Array.concat(kinds)
+    | (false, []) => kinds
+    | (false, byTags) => [{eventTypes: byTags, tags: []}]->Array.concat(kinds)
+    }
+  }
 }
 
 // --- Extract tagged field names from event schema ---
@@ -1277,9 +1327,12 @@ let lookupKeysOfProperties = (properties: dict<S.t<unknown>>): array<string> => 
 /**
 Extracts the `DcbScopeInference.eventShape`s (variant name + `*Id` fields) from a
 variant schema. Payload-less arms are kept (no id fields); non-variant schemas
-return a single shape.
+return a single shape. An arm the schema reads whole says so.
 */
 let eventShapesOfSchema = (schema: S.t<'a>): array<DcbScopeInference.eventShape> => {
+  let whole = wholeEventTypesOfSchema(schema)
+  let marked = (e: DcbScopeInference.eventShape) =>
+    whole->Array.includes(e.eventType) ? {...e, whole: true} : e
   let ofVariant = (variantSchema: S.t<unknown>): option<DcbScopeInference.eventShape> =>
     switch variantSchema {
     | Object({properties}) =>
@@ -1298,7 +1351,7 @@ let eventShapesOfSchema = (schema: S.t<'a>): array<DcbScopeInference.eventShape>
   | AnyOf({anyOf}) => anyOf->Array.filterMap(ofVariant)
   | Object(_) as obj => ofVariant(obj)->Option.mapOr([], s => [s])
   | _ => []
-  }
+  }->Array.map(marked)
 }
 
 // --- Partition tag derivation ---
@@ -1431,6 +1484,9 @@ type effectiveScope = {
   /** Slices reading another slice's event by their own key, across partitions.
       Empty on the fallback. */
   crossPartitionPairs: array<DcbScopeInference.pair>,
+  /** The event types some slice reads whole. Kept on the fallback too: they are read off the
+      schemas, not inferred. */
+  wholeEventTypes: array<string>,
   /** Cross-partition keys the inference found that the fallback does not carry.
       Non-empty is the harmful case and only that: a reference read silently
       narrows to its own partition, so a slice decides against events it cannot
@@ -1478,14 +1534,20 @@ let deriveEffectiveScope = (slices: array<sliceSchemas>): effectiveScope => {
     producedSchemas->Array.map(extractTagKeysByEventType)->mergeTagKeysByEventType
   let inferred = DcbScopeInference.infer(slices->Array.map(sliceShape))
   let useInferred = inferred.ambiguities->Array.length == 0
+  let (fallbackCross, fallbackTagKeys) = DcbScopeInference.withWholeKinds(
+    ~wholeEventTypes=inferred.wholeEventTypes,
+    ~crossPartitionTagKeys=annotatedCross,
+    ~tagKeysByEventType=annotatedTagKeys,
+  )
   {
-    crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
-    tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys,
+    crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : fallbackCross,
+    tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : fallbackTagKeys,
     crossPartitionPairs: useInferred ? inferred.crossPartitionPairs : [],
+    wholeEventTypes: inferred.wholeEventTypes,
     ambiguities: inferred.ambiguities,
     droppedCrossPartitionTagKeys: useInferred
       ? []
-      : inferred.crossPartitionTagKeys->Array.filter(k => !(annotatedCross->Array.includes(k))),
+      : inferred.crossPartitionTagKeys->Array.filter(k => !(fallbackCross->Array.includes(k))),
   }
 }
 

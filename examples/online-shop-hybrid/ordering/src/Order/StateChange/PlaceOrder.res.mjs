@@ -43,8 +43,15 @@ let consumedEventSchema = Sury.union([
     TAG: "CatalogProductImageChanged",
     productId: s.m(DcbTag$Reventless.mark(ProductId$CatalogSpec.schema)),
     productImage: s.m(Sury.$option(UploadableImage$Reventless.forField(undefined, "productImages")))
+  })),
+  Sury.$schema(s => ({
+    TAG: "ShippingFeeSet",
+    shippingMethodId: s.m(DcbTag$Reventless.string),
+    fee: s.m(Money$Reventless.schema)
   }))
 ]);
+
+let consumedEventSchema$1 = DcbTag$Reventless.readWhole(consumedEventSchema, ["ShippingFeeSet"]);
 
 let shippingMethodSchema = Sury.union([
   Sury.literal("Standard"),
@@ -109,7 +116,8 @@ let eventSchema = Sury.$schema(s => ({
   shippingMethod: s.m(shippingMethodSchema),
   deliveryWindow: s.m(Sury.$option(DateRange$Reventless.schema)),
   firstProductName: s.m(Sury.$option(Sury.string)),
-  firstProductImage: s.m(Sury.$option(UploadableImage$Reventless.forField("Catalog", "productImages")))
+  firstProductImage: s.m(Sury.$option(UploadableImage$Reventless.forField("Catalog", "productImages"))),
+  shippingFee: s.m(Sury.$option(Money$Reventless.schema))
 }));
 
 function authorizationOf(param) {
@@ -133,7 +141,7 @@ let readConsistency = "EscalateOnRetry";
 export {
   name,
   Id,
-  consumedEventSchema,
+  consumedEventSchema$1 as consumedEventSchema,
   shippingMethodSchema,
   lineItemSchema,
   commandSchema,

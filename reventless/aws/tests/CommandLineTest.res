@@ -54,6 +54,21 @@ describe("every bin", () => {
     ~mistake=["--table", "t", "--pairs", "messageId"],
     ~message="--pairs takes key:EventType, comma-separated",
   )
+  answersLikeEveryTool(
+    TagKinds.cli,
+    ~mistake=["--table", "t"],
+    ~message="--kinds names the event types read whole (the dcb-scope golden lists them)",
+  )
+})
+
+describe("tag-kinds", () => {
+  testSync("takes the kinds read whole, comma-separated", () =>
+    expect(
+      TagKinds.parseArgs(["--table", "t", "--kinds", "DeliveryFeeSet, TaxRateSet"])->Result.map(
+        a => a.kinds,
+      ),
+    )->toEqual(Ok(["DeliveryFeeSet", "TaxRateSet"]))
+  )
 })
 
 describe("count-fences", () => {

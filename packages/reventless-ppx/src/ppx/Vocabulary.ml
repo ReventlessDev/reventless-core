@@ -108,6 +108,9 @@ let all : entry list =
     e "noApi" [ Type Command; Case Command ]
       "Keeps this command, or every command of the type, off the GraphQL and MCP APIs."
       [ "NoApiAnnotation"; "ReventlessPpx" ];
+    e "readWhole" [ Case ConsumedEvent ]
+      "Reads every event of this kind, beside what the command's tags read; meant for kinds with few events."
+      [ "ReadWholeInference" ];
     e ~args:Required ~ex:{|AllowRoles([Merchandiser, Admin])|} "authorize" [ Case Command ]
       "Who may issue this one command, in place of the file's rule."
       [ "AuthorizationInjection" ];

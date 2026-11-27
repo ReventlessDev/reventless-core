@@ -556,7 +556,8 @@ let validatePartitionHintsVsInference = (
   let backedByChapter = (s: DcbScopeInference.sliceShape, hint, inferred, partitionBySlice) => {
     let own = s.produced->Array.map(e => e.eventType)
     let readsOwnEntity =
-      s.consumed
+      s
+      ->DcbScopeInference.partitionArms
       ->Array.filter(e =>
         !(own->Array.includes(e.eventType)) &&
         e->DcbScopeInference.keysOfEvent->Array.includes(hint)
@@ -788,3 +789,19 @@ let validateCrossPartitionArms = (
   )
   {contradictions, redundancies, overrides: []}
 }
+
+/**
+Checks each type a slice reads whole (`@readWhole`) has a writer among the boundary's slices. Only
+a slice's append tags an event by its kind, so a type written elsewhere (an aggregate, another
+boundary) never carries the tag, and the whole read finds none of it. Each finding stops the start.
+*/
+let validateWholeReads = (~shapes: array<DcbScopeInference.sliceShape>): array<validationError> =>
+  shapes->Array.flatMap(s =>
+    s
+    ->DcbScopeInference.wholeTypesOf
+    ->Array.filterMap(eventType =>
+      shapes->DcbScopeInference.producersOf(eventType) == []
+        ? Some(refused(WholeReadUnwritten({slice: s.sliceName, eventType})))
+        : None
+    )
+  )

@@ -455,7 +455,7 @@ function validatePartitionHintsVsInference(shapes) {
   });
   let backedByChapter = (s, hint, inferred, partitionBySlice) => {
     let own = s.produced.map(e => e.eventType);
-    let readsOwnEntity = s.consumed.filter(e => {
+    let readsOwnEntity = DcbScopeInference$Reventless.partitionArms(s).filter(e => {
       if (own.includes(e.eventType)) {
         return false;
       } else {
@@ -637,6 +637,18 @@ function validateCrossPartitionArms(shapes, inferred) {
   };
 }
 
+function validateWholeReads(shapes) {
+  return shapes.flatMap(s => Stdlib_Array.filterMap(DcbScopeInference$Reventless.wholeTypesOf(s), eventType => {
+    if (Primitive_object.equal(DcbScopeInference$Reventless.producersOf(shapes, eventType), [])) {
+      return refused({
+        TAG: "WholeReadUnwritten",
+        slice: s.sliceName,
+        eventType: eventType
+      });
+    }
+  }));
+}
+
 export {
   refused,
   extractVariantInfo,
@@ -654,5 +666,6 @@ export {
   validatePartitionHintsVsInference,
   validateCommandTagSuppressions,
   validateCrossPartitionArms,
+  validateWholeReads,
 }
 /* DcbTag-Reventless Not a pure module */

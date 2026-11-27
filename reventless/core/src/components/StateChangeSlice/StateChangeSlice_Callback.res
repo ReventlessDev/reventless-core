@@ -47,6 +47,13 @@ module Make = (
     producedEventTypes->Array.filter(t => !(queryEventTypes->Array.includes(t))),
   )
 
+  // The consumed types the slice reads whole, by their kind tag (`@readWhole`).
+  let wholeEventTypes = Reventless.DcbTag.wholeEventTypesOfSchema(Spec.consumedEventSchema)
+
+  // A whole read returning more events than this is logged as a warning: it is meant for kinds
+  // with few events, and nothing can know a kind's size before it runs.
+  let wholeReadWarnAt = 100
+
   /**
   The produced events with their personal fields sealed by the installed provider:
   the one form both the stored event and the published message carry. Refused,
@@ -142,7 +149,12 @@ module Make = (
     | Some(keys) => baseTags->Array.filter(t => keys->Array.includes(t.key))
     | None => baseTags
     }
-    let tags = indexedTags
+    // A type some slice of the boundary reads whole carries its kind tag.
+    let tags =
+      indexedTags->Reventless.DcbTag.withKindTag(
+        ~eventType,
+        ~indexedKeys=tagKeysByEventType->Dict.get(eventType)->Option.getOr([]),
+      )
     // Inherit service from the triggering command — the DcbEventLog publish path
     // overrides service to `<name>DcbEventLog` for routing so EventCollector
     // subscriptions still match.
@@ -287,6 +299,7 @@ module Make = (
       ~crossPartitionTagKeys,
       ~payloadTagKeys,
       ~pairEventTypes,
+      ~wholeEventTypes,
     )
 
     // Log the DCB query parameters — the OR clauses (event types + tags) the
@@ -541,6 +554,29 @@ module Make = (
                 : ` [${reads->Array.join(", ")}]`}`,
           )
         })
+        ->Effect.tap(_ =>
+          wholeEventTypes
+          ->Array.filterMap(
+            t => {
+              let read =
+                seen
+                ->Dict.get(Reventless.DcbFenceCount.seenKey(Reventless.DcbTag.kindTag(t), t))
+                ->Option.getOr(0)
+              read > wholeReadWarnAt ? Some(`${t}: ${read->Int.toString}`) : None
+            },
+          )
+          ->Array.join(", ")
+          ->(
+            large =>
+              large == ""
+                ? Effect.succeed()
+                : EffectLogger.logWarn(
+                    ~comp,
+                    ~ids,
+                    `read whole more than ${wholeReadWarnAt->Int.toString} events of a kind (${large}); a whole read is meant for kinds with few events`,
+                  )
+          )
+        )
         ->Effect.flatMap(((state, headPosition, _, owners, repeated)) =>
           switch Reventless.DcbFenceCount.shortfalls(fences, fenceClauses, seen) {
           | [] =>
@@ -823,6 +859,11 @@ module Make = (
     | Some(_) => partitionTag
     | None => slicePartitionTag->Lazy.get
     }
+    // The kind tag is read across partitions, also where the caller did not thread the boundary.
+    let crossPartitionTagKeys =
+      wholeEventTypes == [] || crossPartitionTagKeys->Array.includes(Reventless.DcbTag.kindTagKey)
+        ? crossPartitionTagKeys
+        : crossPartitionTagKeys->Array.concat([Reventless.DcbTag.kindTagKey])
     let payloadTagKeys =
       scopeShape->Reventless.DcbTag.commandPayloadTagKeys(~partitionTag, ~crossPartitionTagKeys)
     let pairEventTypes =

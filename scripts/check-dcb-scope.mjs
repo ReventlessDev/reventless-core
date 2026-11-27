@@ -194,15 +194,16 @@ for (const example of examples) {
     }
 
     // The golden records what the boundary resolved to, not merely that it did:
-    // each slice's partition, the keys read across partitions, and the pairs. Each
-    // changes the query a slice issues, and a pair also changes its writers' path,
-    // so all are worth a reviewer's eye.
+    // each slice's partition, the keys read across partitions, the pairs and the kinds
+    // read whole. Each changes the query a slice issues, and a pair or a whole read
+    // also changes its writers' path, so all are worth a reviewer's eye.
     report[name] = {
       partitionBySlice: Object.fromEntries(
         Object.entries(inferred.partitionBySlice).sort(([a], [b]) => a.localeCompare(b)),
       ),
       crossPartitionTagKeys: effective.crossPartitionTagKeys,
       crossPartitionPairs: effective.crossPartitionPairs,
+      ...(effective.wholeEventTypes.length > 0 ? { wholeEventTypes: effective.wholeEventTypes } : {}),
       partitionKeyByEventType: Object.fromEntries(
         Object.entries(partitionKeyByEventType).sort(([a], [b]) => a.localeCompare(b)),
       ),

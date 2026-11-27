@@ -229,10 +229,12 @@ let entryMatchesQuery = (entry: logEntry, query: Reventless.DcbTag.query) =>
       | Some(types) => types->Array.includes(entry.eventType)
       | None => true
       }
+      // Every event carries its kind tag, so a whole read finds it whoever wrote it.
       let tagMatch = switch qi.tags {
       | Some(tags) =>
         tags->Array.every(tag =>
-          entry.tags->Array.some(et => et.key == tag.key && et.value == tag.value)
+          (tag.key == Reventless.DcbTag.kindTagKey && tag.value == entry.eventType) ||
+            entry.tags->Array.some(et => et.key == tag.key && et.value == tag.value)
         )
       | None => true
       }
@@ -598,6 +600,7 @@ module DecisionStep = (
         ~tagKeysByEventType,
         ~crossPartitionTagKeys,
         ~payloadTagKeys,
+        ~wholeEventTypes=Reventless.DcbTag.wholeEventTypesOfSchema(Spec.consumedEventSchema),
       ),
     )
 

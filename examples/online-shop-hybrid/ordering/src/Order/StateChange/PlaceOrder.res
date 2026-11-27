@@ -39,6 +39,9 @@ type consumedEvent =
       productId: CatalogSpec.ProductId.t,
       productImage?: Reventless.UploadableImage.t,
     })
+  // Every method's fee, read whole: three entries, kept per method, and the command
+  // names its method as an enum, which is no tag to read one fee by.
+  | @readWhole ShippingFeeSet({shippingMethodId: string, fee: Reventless.Money.t})
 
 // Declared in the order the UI should present them: the batched default first,
 // then the expedited option, then in-store collection.
@@ -158,4 +161,8 @@ type event =
       // name is. A reshoot, a withdrawal or a deletion afterwards leaves this
       // order showing what the shopper actually bought.
       @storageRef("Catalog.productImages") firstProductImage?: Reventless.UploadableImage.t,
+      // The fee of the order's shipping method when it was placed, frozen for the
+      // reason the prices are. Absent where no fee was set for the method, and on
+      // every order placed before fees existed. Not part of `total`.
+      shippingFee?: Reventless.Money.t,
     })

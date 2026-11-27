@@ -40,8 +40,35 @@ function sharedProducedKeys(s) {
   }
 }
 
+function partitionArms(s) {
+  return s.consumed.filter(e => Primitive_object.notequal(e.whole, true));
+}
+
+function wholeTypesOf(s) {
+  return dedupSorted(s.consumed.filter(e => Primitive_object.equal(e.whole, true)).map(e => e.eventType));
+}
+
+let kindTagKey = "reventless.kind";
+
+function withWholeKinds(wholeEventTypes, crossPartitionTagKeys, tagKeysByEventType) {
+  if (wholeEventTypes.length === 0) {
+    return [
+      crossPartitionTagKeys,
+      tagKeysByEventType
+    ];
+  }
+  let tagKeys = Object.assign({}, tagKeysByEventType);
+  wholeEventTypes.forEach(t => {
+    tagKeys[t] = dedupSorted(Stdlib_Option.getOr(tagKeys[t], []).concat([kindTagKey]));
+  });
+  return [
+    dedupSorted(crossPartitionTagKeys.concat([kindTagKey])),
+    tagKeys
+  ];
+}
+
 function consumedKeys(s) {
-  return dedupSorted(s.consumed.flatMap(keysOfEvent));
+  return dedupSorted(partitionArms(s).flatMap(keysOfEvent));
 }
 
 function commandScalarKeys(s) {
@@ -53,7 +80,7 @@ function foreignConsumedKeys(s) {
   s.produced.forEach(e => {
     ownProduced.add(e.eventType);
   });
-  return dedupSorted(s.consumed.flatMap(e => {
+  return dedupSorted(partitionArms(s).flatMap(e => {
     if (ownProduced.has(e.eventType)) {
       return [];
     } else {
@@ -78,7 +105,7 @@ function foreignArms(s) {
   s.produced.forEach(e => {
     own.add(e.eventType);
   });
-  return s.consumed.filter(e => !own.has(e.eventType));
+  return partitionArms(s).filter(e => !own.has(e.eventType));
 }
 
 function producersOf(slices, eventType) {
@@ -361,7 +388,7 @@ function commandPayloadKeys(s, partition, crossPartition) {
     } else {
       return Stdlib_Option.getOr(f.declared, false);
     }
-  }).concat(s.consumed.concat(s.produced).flatMap(e => e.idFields.filter(declared))).map(tagKeyOf);
+  }).concat(partitionArms(s).concat(s.produced).flatMap(e => e.idFields.filter(declared))).map(tagKeyOf);
   return commandScalarKeys(s).filter(k => {
     if (k !== partition && !foreign.includes(k) && !crossPartition.includes(k)) {
       return !pinned.includes(k);
@@ -394,7 +421,7 @@ function infer(slices) {
   slices.forEach(s => {
     let own = partitionBySlice[s.sliceName];
     let scalar = commandScalarKeys(s);
-    readByKeys(s.consumed, own).forEach(k => {
+    readByKeys(partitionArms(s), own).forEach(k => {
       if (ownedPartitionKeys.has(k) && Primitive_object.notequal(k, own) && scalar.includes(k)) {
         crossKeys.add(k);
         return;
@@ -403,7 +430,7 @@ function infer(slices) {
   });
   slices.forEach(s => {
     let presented = Stdlib_Option.getOr(s.commandLookups, []);
-    s.consumed.forEach(e => {
+    partitionArms(s).forEach(e => {
       Stdlib_Option.getOr(e.lookups, []).forEach(k => {
         if (presented.includes(k)) {
           crossKeys.add(k);
@@ -415,7 +442,7 @@ function infer(slices) {
   let crossPartitionTagKeys = Array.from(crossKeys.values()).toSorted(Primitive_string.compare);
   let readKeysByEventType = {};
   slices.forEach(s => {
-    s.consumed.forEach(e => {
+    partitionArms(s).forEach(e => {
       let prev = Stdlib_Option.getOr(readKeysByEventType[e.eventType], []);
       readKeysByEventType[e.eventType] = prev.concat(e.idFields.map(tagKeyOf));
     });
@@ -437,12 +464,15 @@ function infer(slices) {
     });
   });
   let crossPartitionPairs = pairsOf(slices, partitionBySlice, crossPartitionTagKeys);
+  let wholeEventTypes = dedupSorted(slices.flatMap(wholeTypesOf));
+  let match$1 = withWholeKinds(wholeEventTypes, crossPartitionTagKeys, tagKeysByEventType);
   return {
     partitionBySlice: partitionBySlice,
     ownerByKey: ownerByKey,
-    crossPartitionTagKeys: crossPartitionTagKeys,
+    crossPartitionTagKeys: match$1[0],
     crossPartitionPairs: crossPartitionPairs,
-    tagKeysByEventType: tagKeysByEventType,
+    wholeEventTypes: wholeEventTypes,
+    tagKeysByEventType: match$1[1],
     ambiguities: match.ambiguities
   };
 }
@@ -453,6 +483,10 @@ export {
   keysOfEvent,
   producedKeys,
   sharedProducedKeys,
+  partitionArms,
+  wholeTypesOf,
+  kindTagKey,
+  withWholeKinds,
   consumedKeys,
   commandScalarKeys,
   foreignConsumedKeys,

@@ -13,7 +13,9 @@
 // rather than this one.
 //
 // PlaceOrder only succeeds because the referenced product was synced first, so
-// the flow seeds a CatalogProductSynced event before placing the order.
+// the flow seeds a CatalogProductSynced event before placing the order. It sets the
+// Express fee first too: stored under its method, it reaches the order only
+// because PlaceOrder reads every fee whole.
 @@reventless.gwt
 
 open Ordering_Examples
@@ -39,6 +41,12 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         price: bookPrice,
       }),
     ])
+    ->Flow.SetShippingFee.whenCommand(
+      SetShippingFee.SetShippingFee({shippingMethod: Express, fee: expressFee}),
+    )
+    ->Flow.SetShippingFee.thenEvent(
+      SetShippingFee.ShippingFeeSet({shippingMethodId: "Express", fee: expressFee}),
+    )
     // Express, so the automation picks it up — a Standard or Pickup order would
     // stop at Placed and wait for an explicit ShipOrder.
     ->Flow.PlaceOrder.whenCommand(
@@ -74,6 +82,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         // Captured off the shelf at placement — the same name the catalog
         // synced above, now part of the order's own record.
         firstProductName: book,
+        // The fee set above for the order's method, frozen like the prices.
+        shippingFee: expressFee,
       }),
     )
     ->Flow.AutoShipOrder.whenReacts

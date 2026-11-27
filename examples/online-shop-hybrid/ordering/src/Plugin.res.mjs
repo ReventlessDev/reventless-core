@@ -13,6 +13,7 @@ import * as PlaceOrder$OrderingPlugin from "./Order/StateChange/PlaceOrder.res.m
 import * as CancelOrder$OrderingPlugin from "./Order/StateChange/CancelOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./Order/Automation/AutoShipOrder.res.mjs";
 import * as LifecycleModel$OrderingPlugin from "./LifecycleModel.res.mjs";
+import * as SetShippingFee$OrderingPlugin from "./Shipping/StateChange/SetShippingFee.res.mjs";
 import * as MarketingDigest$OrderingPlugin from "./Notification/Automation/MarketingDigest.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as SendNotification$OrderingPlugin from "./Notification/OutboundTranslation/SendNotification.res.mjs";
@@ -33,6 +34,7 @@ import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModelStrea
 import * as GeocodeCustomerAddress$OrderingPlugin from "./Customer/OutboundTranslation/GeocodeCustomerAddress.res.mjs";
 import * as NotificationDeliveries$OrderingPlugin from "./Notification/StateViewStream/NotificationDeliveries.res.mjs";
 import * as NotificationPreferences$OrderingPlugin from "./Notification/StateChange/NotificationPreferences.res.mjs";
+import * as SetShippingFee_Decision$OrderingPlugin from "./Shipping/StateChange/SetShippingFee_Decision.res.mjs";
 import * as AnnounceRecipientContact$OrderingPlugin from "./Notification/OutboundTranslation/AnnounceRecipientContact.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/Automation/AutoShipOrder_Automation.res.mjs";
 import * as NotificationSourceClaims$OrderingPlugin from "./Notification/StateChange/NotificationSourceClaims.res.mjs";
@@ -89,6 +91,13 @@ let dcbSliceSchemas = [
     consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
     eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
     moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl
+  },
+  {
+    name: SetShippingFee$OrderingPlugin.name,
+    commandSchema: SetShippingFee$OrderingPlugin.commandSchema,
+    consumedEventSchema: SetShippingFee$OrderingPlugin.consumedEventSchema,
+    eventSchema: SetShippingFee$OrderingPlugin.eventSchema,
+    moduleUrl: SetShippingFee$OrderingPlugin.moduleUrl
   },
   {
     name: ShipOrder$OrderingPlugin.name,
@@ -191,6 +200,23 @@ function Make(Platform) {
     evolve: PlaceOrder_Decision$OrderingPlugin.evolve,
     decide: PlaceOrder_Decision$OrderingPlugin.decide,
     moduleUrl: PlaceOrder_Decision$OrderingPlugin.moduleUrl
+  });
+  let SetShippingFeeSlice = Platform.StateChangeSlice.Make({
+    name: SetShippingFee$OrderingPlugin.name,
+    moduleUrl: SetShippingFee$OrderingPlugin.moduleUrl,
+    consumedEventSchema: SetShippingFee$OrderingPlugin.consumedEventSchema,
+    errorSchema: SetShippingFee$OrderingPlugin.errorSchema,
+    eventSchema: SetShippingFee$OrderingPlugin.eventSchema,
+    commandSchema: SetShippingFee$OrderingPlugin.commandSchema,
+    authorizationOf: SetShippingFee$OrderingPlugin.authorizationOf,
+    commandTransition: SetShippingFee$OrderingPlugin.commandTransition,
+    traits: SetShippingFee$OrderingPlugin.traits,
+    readConsistency: SetShippingFee$OrderingPlugin.readConsistency
+  })({
+    initialState: SetShippingFee_Decision$OrderingPlugin.initialState,
+    evolve: SetShippingFee_Decision$OrderingPlugin.evolve,
+    decide: SetShippingFee_Decision$OrderingPlugin.decide,
+    moduleUrl: SetShippingFee_Decision$OrderingPlugin.moduleUrl
   });
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
@@ -518,6 +544,7 @@ function Make(Platform) {
     NotificationPreferencesSlice,
     NotificationSourceClaimsSlice,
     PlaceOrderSlice,
+    SetShippingFeeSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
   ], [
@@ -628,6 +655,10 @@ function Make(Platform) {
       "Notification"
     ],
     [
+      "SetShippingFee",
+      "Shipping"
+    ],
+    [
       "ShipOrder",
       "Order"
     ],
@@ -649,6 +680,7 @@ function Make(Platform) {
     NotificationPreferencesSlice,
     NotificationSourceClaimsSlice,
     PlaceOrderSlice,
+    SetShippingFeeSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
   ], [
@@ -699,6 +731,7 @@ function Make(Platform) {
     NotificationPreferencesSlice: NotificationPreferencesSlice,
     NotificationSourceClaimsSlice: NotificationSourceClaimsSlice,
     PlaceOrderSlice: PlaceOrderSlice,
+    SetShippingFeeSlice: SetShippingFeeSlice,
     ShipOrderSlice: ShipOrderSlice,
     SyncCatalogProductSlice: SyncCatalogProductSlice,
     AvailableProductsStreamSlice: AvailableProductsStreamSlice,

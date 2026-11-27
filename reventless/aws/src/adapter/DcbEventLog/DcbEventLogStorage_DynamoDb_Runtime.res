@@ -164,8 +164,11 @@ let toItem = (
   // `tag_composite` key is byte-identical to the key a composite decision read
   // builds from the command's entity tags — the write/read match a composite
   // slice's OCC depends on.
-  if event.tags->Array.length > 1 {
-    let composite = compositeTagKey(event.tags)
+  // The kind tag stays out of it: it names the event's type, not its entity, and a composite
+  // read of the entity's tags must still find the event once its kind is read whole.
+  let entityTags = event.tags->Array.filter(t => t.key != Reventless.DcbTag.kindTagKey)
+  if entityTags->Array.length > 1 {
+    let composite = compositeTagKey(entityTags)
     item->Dict.set("tag_composite", composite->JSON.Encode.string)
   }
 
@@ -1238,9 +1241,40 @@ let buildFenceConditionCheck = (
   tag: Reventless.DcbTag.tag,
   ~consumedTypes: array<string>,
   ~after: option<string>,
+  ~readCounts: dict<int>=Dict.make(),
 ): TransactWriteCommand.conditionCheck => {
   let names = Dict.make()
   switch after {
+  // A counted cross-partition fence, as in `buildConditionalFenceUpdate`.
+  | _ if consumedTypes->Array.some(t => readCounts->Dict.get(t)->Option.isSome) =>
+    let values = Dict.make()
+    let conditionExpression =
+      consumedTypes
+      ->Array.mapWithIndex((t, i) => {
+        let ph = `#c${i->Int.toString}`
+        switch (readCounts->Dict.get(t), after) {
+        | (Some(n), _) =>
+          let v = `:s${i->Int.toString}`
+          names->Dict.set(ph, fenceCountAttr(t))
+          values->Dict.set(v, n->Int.toFloat->JSON.Encode.float)
+          n == 0 ? `(attribute_not_exists(${ph}) OR ${ph} = ${v})` : `${ph} = ${v}`
+        | (None, Some(pos)) =>
+          names->Dict.set(ph, fenceTypeAttr(t))
+          values->Dict.set(":after", pos->JSON.Encode.string)
+          `(attribute_not_exists(${ph}) OR ${ph} <= :after)`
+        | (None, None) =>
+          names->Dict.set(ph, fenceTypeAttr(t))
+          `attribute_not_exists(${ph})`
+        }
+      })
+      ->Array.join(" AND ")
+    {
+      TransactWriteCommand.key: fenceKey(tag),
+      tableName,
+      conditionExpression,
+      expressionAttributeNames: names,
+      expressionAttributeValues: values,
+    }
   | None =>
     let conditionExpression =
       consumedTypes
@@ -1631,7 +1665,9 @@ let buildConditionalTransactItems = (
     // subset-type slice. Non-partition single tags at after=None do nothing.
     | Some([tag]) =>
       if isCrossPartition(tag) {
-        pushUpdate(tag)
+        // A reader that writes none of the tag's events (a reference read, a kind read whole)
+        // moves nothing on its fence: it is checked, never left out.
+        producedTypesFor(tag) == [] ? pushCheck(tag) : pushUpdate(tag)
       } else {
         switch cond.after {
         | Some(_) =>
@@ -1730,6 +1766,7 @@ let buildConditionalTransactItems = (
             tag,
             ~consumedTypes,
             ~after=cond.after,
+            ~readCounts=readCountsFor(tag),
           ),
         })
   })

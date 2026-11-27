@@ -43,6 +43,26 @@ let dockPrice: Reventless.Money.t = Reventless.Money.make(
   ~currency=Reventless.Currency.EUR,
 )
 
+let standardFee: Reventless.Money.t = Reventless.Money.make(
+  ~amount=4.9,
+  ~currency=Reventless.Currency.EUR,
+)
+
+let raisedStandardFee: Reventless.Money.t = Reventless.Money.make(
+  ~amount=5.9,
+  ~currency=Reventless.Currency.EUR,
+)
+
+let expressFee: Reventless.Money.t = Reventless.Money.make(
+  ~amount=9.9,
+  ~currency=Reventless.Currency.EUR,
+)
+
+let negativeFee: Reventless.Money.t = Reventless.Money.make(
+  ~amount=-1.0,
+  ~currency=Reventless.Currency.EUR,
+)
+
 let laptopChangedPrice: Reventless.Money.t = Reventless.Money.make(
   ~amount=899.99,
   ~currency=Reventless.Currency.EUR,

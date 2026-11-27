@@ -273,7 +273,7 @@
     "targets": [
       "Placed"
     ],
-    "scenarios": 27
+    "scenarios": 28
   },
   {
     "component": "ProductImages",
@@ -384,6 +384,14 @@
     ],
     "targets": [],
     "scenarios": 6
+  },
+  {
+    "component": "SetShippingFee",
+    "command": "SetShippingFee",
+    "level": "",
+    "allowedStates": [],
+    "targets": [],
+    "scenarios": 5
   },
   {
     "component": "ShipOrder",

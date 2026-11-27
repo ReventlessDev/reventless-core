@@ -26,6 +26,8 @@ function code(r) {
       return "store-in-use";
     case "RoleUnhonoured" :
       return "roles-unhonoured";
+    case "WholeReadUnwritten" :
+      return "whole-read-unwritten";
   }
 }
 
@@ -68,6 +70,8 @@ function describe(r) {
       return `refusing to reset ` + r.path + `: it is the store of ` + r.app + ` running at :` + r.port.toString() + ` (pid ` + r.pid.toString() + `). Stop that platform first, or start this one without ?reset.`;
     case "RoleUnhonoured" :
       return r.plugin + `: ` + r.role + ` ` + r.why;
+    case "WholeReadUnwritten" :
+      return r.eventType + ` is read whole, but no slice of the boundary writes it. Only a slice's append tags an event by its kind, so the read would find none: read it by its tags, or write it from a slice of this boundary.`;
   }
 }
 
@@ -90,6 +94,8 @@ function message(t) {
       return t.refusals.map(describe).join(" ");
     case "RoleUnhonoured" :
       return `Admission this platform cannot honor — the people it is for could not get in:\n` + t.refusals.map(r => `  ` + describe(r)).join("\n");
+    case "WholeReadUnwritten" :
+      return `DCB whole read refused (` + component + `): ` + bySlice();
   }
   return `DCB partition contradiction (` + component + `): ` + bySlice();
 }
@@ -208,6 +214,18 @@ function refusalToJson(r) {
         [
           "why",
           r.why
+        ]
+      ];
+      break;
+    case "WholeReadUnwritten" :
+      fields = [
+        [
+          "slice",
+          r.slice
+        ],
+        [
+          "eventType",
+          r.eventType
         ]
       ];
       break;

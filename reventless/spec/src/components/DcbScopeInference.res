@@ -43,6 +43,9 @@ The four rules (over the representation):
    candidates). `ShipOrder({orderId, carrierId})` names the carrier as information:
    AND-ing it into the clause would hide every order event that does not carry it,
    so it is payload. See `commandPayloadKeys`.
+
+A consumed arm marked `@readWhole` takes no part in any rule: the slice reads every event of the
+type by the kind tag (`kindTagKey`), whatever its command carries. See `withWholeKinds`.
 */
 /** A field the slice graph treats as an entity identity.
 
@@ -77,7 +80,14 @@ type idField = {
     the tags the author declared on fields that are no identity (a code a thing is found by,
     `ReferenceCode.tag`). They never take part in choosing a partition; an event is indexed by
     them, and a decision presented one reads by it on its own. */
-type eventShape = {eventType: string, idFields: array<idField>, lookups?: array<string>}
+type eventShape = {
+  eventType: string,
+  idFields: array<idField>,
+  lookups?: array<string>,
+  /** A consumed arm marked `@readWhole`: the slice reads every event of the type, by the kind
+      tag, and the arm takes no part in its partition. */
+  whole?: bool,
+}
 
 /**
 The structural shape of one slice, the boundary type both adapters produce:
@@ -128,6 +138,8 @@ type derived = {
   crossPartitionTagKeys: array<string>,
   /** The pairs of the boundary, sorted by reader and event type. */
   crossPartitionPairs: array<pair>,
+  /** The event types some slice reads whole (sorted). */
+  wholeEventTypes: array<string>,
   /** produced eventType -> its indexed (non-payload) tag keys (sorted). */
   tagKeysByEventType: dict<array<string>>,
   /** (sliceName, reason) for slices whose partition couldn't be inferred. */
@@ -173,8 +185,42 @@ let sharedProducedKeys = (s: sliceShape): array<string> =>
     producedKeys(s)->Array.filter(k => events->Array.every(e => e->keysOfEvent->Array.includes(k)))
   }
 
+/** The consumed arms a slice reads by its tags: every one but those it reads whole. */
+let partitionArms = (s: sliceShape): array<eventShape> =>
+  s.consumed->Array.filter(e => e.whole != Some(true))
+
+/** The types a slice reads whole (sorted). */
+let wholeTypesOf = (s: sliceShape): array<string> =>
+  s.consumed->Array.filter(e => e.whole == Some(true))->Array.map(e => e.eventType)->dedupSorted
+
+/** The key of the tag every event of a kind read whole carries; its value is the event type. A
+    field name cannot hold the dot, so no app's own tag shares it. */
+let kindTagKey = "reventless.kind"
+
+/**
+The scope a boundary's whole reads add: the kind key is read across partitions, and each type read
+whole is indexed by it, so its writers tag it and move its fence.
+*/
+let withWholeKinds = (
+  ~wholeEventTypes: array<string>,
+  ~crossPartitionTagKeys: array<string>,
+  ~tagKeysByEventType: dict<array<string>>,
+): (array<string>, dict<array<string>>) =>
+  switch wholeEventTypes {
+  | [] => (crossPartitionTagKeys, tagKeysByEventType)
+  | types =>
+    let tagKeys = tagKeysByEventType->Dict.copy
+    types->Array.forEach(t =>
+      tagKeys->Dict.set(
+        t,
+        dedupSorted(tagKeys->Dict.get(t)->Option.getOr([])->Array.concat([kindTagKey])),
+      )
+    )
+    (dedupSorted(crossPartitionTagKeys->Array.concat([kindTagKey])), tagKeys)
+  }
+
 let consumedKeys = (s: sliceShape): array<string> =>
-  dedupSorted(s.consumed->Array.flatMap(keysOfEvent))
+  dedupSorted(s->partitionArms->Array.flatMap(keysOfEvent))
 
 /**
 Keys the command carries as a **scalar** (`*Id: string`, not `*Ids: array<string>`).
@@ -202,7 +248,7 @@ let foreignConsumedKeys = (s: sliceShape): array<string> => {
   let ownProduced = Set.make()
   s.produced->Array.forEach(e => ownProduced->Set.add(e.eventType))
   dedupSorted(
-    s.consumed->Array.flatMap(e => ownProduced->Set.has(e.eventType) ? [] : e->keysOfEvent),
+    s->partitionArms->Array.flatMap(e => ownProduced->Set.has(e.eventType) ? [] : e->keysOfEvent),
   )
 }
 
@@ -227,11 +273,11 @@ let readByKeys = (arms: array<eventShape>, ~partition: option<string>): array<st
   )
 }
 
-/** The arms a slice reads that it does not itself produce. */
+/** The arms a slice reads by its tags that it does not itself produce. */
 let foreignArms = (s: sliceShape): array<eventShape> => {
   let own = Set.make()
   s.produced->Array.forEach(e => own->Set.add(e.eventType))
-  s.consumed->Array.filter(e => !(own->Set.has(e.eventType)))
+  s->partitionArms->Array.filter(e => !(own->Set.has(e.eventType)))
 }
 
 /** The slices that write `eventType`. */
@@ -583,7 +629,9 @@ let commandPayloadKeys = (s: sliceShape, ~partition: string, ~crossPartition: ar
     s.command
     ->Array.filter(f => f.isList || declared(f))
     ->Array.concat(
-      Array.concat(s.consumed, s.produced)->Array.flatMap(e => e.idFields->Array.filter(declared)),
+      Array.concat(s->partitionArms, s.produced)->Array.flatMap(e =>
+        e.idFields->Array.filter(declared)
+      ),
     )
     ->Array.map(tagKeyOf)
   commandScalarKeys(s)->Array.filter(k =>
@@ -621,7 +669,8 @@ let infer = (slices: array<sliceShape>): derived => {
   slices->Array.forEach(s => {
     let own = partitionBySlice->Dict.get(s.sliceName)
     let scalar = commandScalarKeys(s)
-    s.consumed
+    s
+    ->partitionArms
     ->readByKeys(~partition=own)
     ->Array.forEach(k =>
       if ownedPartitionKeys->Set.has(k) && Some(k) != own && scalar->Array.includes(k) {
@@ -634,7 +683,9 @@ let infer = (slices: array<sliceShape>): derived => {
   // a clause of its own, never AND-ed with the slice's own key, which that event does not carry.
   slices->Array.forEach(s => {
     let presented = s.commandLookups->Option.getOr([])
-    s.consumed->Array.forEach(e =>
+    s
+    ->partitionArms
+    ->Array.forEach(e =>
       e.lookups
       ->Option.getOr([])
       ->Array.forEach(
@@ -657,7 +708,9 @@ let infer = (slices: array<sliceShape>): derived => {
   // capacity read — correctly indexed without a hand annotation.
   let readKeysByEventType = Dict.make()
   slices->Array.forEach(s =>
-    s.consumed->Array.forEach(e => {
+    s
+    ->partitionArms
+    ->Array.forEach(e => {
       let prev = readKeysByEventType->Dict.get(e.eventType)->Option.getOr([])
       readKeysByEventType->Dict.set(e.eventType, prev->Array.concat(e->keysOfEvent))
     })
@@ -677,11 +730,19 @@ let infer = (slices: array<sliceShape>): derived => {
 
   let crossPartitionPairs = pairsOf(slices, ~partitionBySlice, ~crossPartitionTagKeys)
 
+  let wholeEventTypes = slices->Array.flatMap(wholeTypesOf)->dedupSorted
+  let (crossPartitionTagKeys, tagKeysByEventType) = withWholeKinds(
+    ~wholeEventTypes,
+    ~crossPartitionTagKeys,
+    ~tagKeysByEventType,
+  )
+
   {
     partitionBySlice,
     ownerByKey,
     crossPartitionTagKeys,
     crossPartitionPairs,
+    wholeEventTypes,
     tagKeysByEventType,
     ambiguities,
   }

@@ -145,7 +145,7 @@ $ npx check-start --json
 
 An app that starts prints `{"starts":true}`. Each finding has a stable `code`
 (`partition-contradiction`, `partition-unreachable`, `scope-contradiction`,
-`no-partition-key`, `store-in-use`, `roles-unhonoured`) and the fields it found; a
+`no-partition-key`, `whole-read-unwritten`, `store-in-use`, `roles-unhonoured`) and the fields it found; a
 refusal that carries none is one finding coded `unknown` with the message. The exit
 codes stay 0 and 1, and the logs stay quiet unless `LOG_LEVEL` asks for them.
 

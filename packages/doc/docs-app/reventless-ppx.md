@@ -160,10 +160,11 @@ These field attributes give fine-grained control over DCB tag injection. They wo
 |---|---|---|
 | `@partitionTag` | A `*Id: string` field on a produced `event` | Injects `@s.matches(DcbTag.partition)` — marks this field as the partition key. **Required only when inference is ambiguous** — the framework infers the partition key from the slice graph otherwise. See [When you still need `@partitionTag`](dcb-usage.md#when-you-still-need-partitiontag). |
 | `@crossPartition` | A `string` (or `array<string>` element) field | Injects `@s.matches(DcbTag.crossPartition)`. **Rarely needed** — cross-entity *reference* reads are inferred from the slice graph; this is the escape hatch for **M:N capacity** reads of a slice's own event type. On a `consumedEvent` arm, naming the slice's own key, it reads that one event type across partitions instead ([a pair](dcb-usage.md#a-slice-reading-its-own-key-off-another-entitys-events)). See [`@crossPartition`](#crosspartition--cross-partition-secondary-tag-reads) below. |
+| `@readWhole` | A case of a slice's `consumedEvent` | Reads every event of that kind beside what the command's tags read, and leaves the case out of the slice's partition. Emits `DcbTag.readWhole(consumedEventSchema, [...])` after the declaration. Meant for kinds with few events ([a whole read](dcb-usage.md#a-slice-reading-a-small-kind-of-event-whole-readwhole)). A compile error on any other type. |
 | `@noDcbTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use on an event field that is payload data, not a DCB query key. A command needs it no longer: a reference the slice decides nothing by is left out of the query anyway ([Command references nothing decides by](dcb-usage.md#command-references-nothing-decides-by-inferred--no-annotation)). |
 | `@dcbTag` | Any `string` field | Injects `@s.matches(DcbTag.declared)` — explicit opt-in for fields that don't follow `*Id` naming (e.g., `sku`, `slug`, `reference`). On a command it also keeps a reference in the decision query, which fences the command per that key. |
 
-The PPX strips all four attributes from the output AST, so the compiler never sees them as unknown attributes.
+The PPX strips all of these attributes from the output AST, so the compiler never sees them as unknown attributes.
 
 **`@partitionTag` — when inference cannot choose:**
 

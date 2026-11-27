@@ -535,7 +535,8 @@ function Make(Spec) {
       }
     })), crossPartitionTagKeys);
     let emittedEventTypes = DcbDecode$Reventless.makeDecoder(Spec.eventSchema).eventTypes;
-    let consumedTagKeysByType = DcbTag$Reventless.extractTagKeysByEventType(Spec.consumedEventSchema);
+    let wholeEventTypes = DcbTag$Reventless.wholeEventTypesOfSchema(Spec.consumedEventSchema);
+    let consumedTagKeysByType = Object.fromEntries(Object.entries(DcbTag$Reventless.extractTagKeysByEventType(Spec.consumedEventSchema)).filter(param => !wholeEventTypes.includes(param[0])));
     let queryTagKeys = query => query.flatMap(qi => Stdlib_Option.mapOr(qi.tags, [], tags => tags.map(t => t.key)));
     let selectableBy = (query, declaredKeys) => {
       if (query.length === 0) {
@@ -574,7 +575,7 @@ function Make(Spec) {
       }
       errors.contents = [];
       appendConditionFailure.contents = undefined;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, tagKeysByEventType, crossPartitionTagKeys, payloadTagKeys, undefined, wholeEventTypes);
       let condition = {
         query: query
       };

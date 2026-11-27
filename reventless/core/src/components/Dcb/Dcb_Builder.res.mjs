@@ -236,7 +236,9 @@ function Make(DcbEventLogStorage) {
           return true;
         }
       }).map(tagKey => `tag_` + tagKey);
-      let indexes$1 = indexes.length > 1 ? indexes.concat(["tag_composite"]) : indexes;
+      let readsWhole = stateChangeSlices.some(Sc => Primitive_object.notequal(DcbTag$Reventless.wholeEventTypesOfSchema(Sc.Spec.consumedEventSchema), []));
+      let indexes$1 = readsWhole ? indexes.concat([`tag_` + DcbTag$Reventless.kindTagKey]) : indexes;
+      let indexes$2 = indexes$1.length > 1 ? indexes$1.concat(["tag_composite"]) : indexes$1;
       let sliceSchemas = stateChangeSlices.map(Sc => ({
         name: Sc.Spec.name,
         commandSchema: Sc.Spec.commandSchema,
@@ -282,6 +284,7 @@ function Make(DcbEventLogStorage) {
       scopeIssues.contradictions.forEach(e => log.warn("Dcb_Builder", undefined, `DCB scope contradiction (` + e.sliceName + `): ` + e.message));
       scopeIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
       checkCrossPartitionArms(name, inferenceShapes, inferred);
+      refuse(name, DcbValidation$Reventless.validateWholeReads(inferenceShapes));
       let effective = DcbTag$Reventless.deriveEffectiveScope(sliceSchemas);
       let effectiveCrossPartitionTagKeys = effective.crossPartitionTagKeys;
       let effectiveTagKeysByEventType = effective.tagKeysByEventType;
@@ -323,6 +326,7 @@ function Make(DcbEventLogStorage) {
           }
         });
       });
+      effective.wholeEventTypes.forEach(eventType => log.info("Dcb_Builder", undefined, `DCB whole read (` + name + `): ` + eventType + ` is read whole by ` + inferenceShapes.filter(s => DcbScopeInference$Reventless.wholeTypesOf(s).includes(eventType)).map(s => s.sliceName).join(", ") + `; its writers tag it ` + DcbTag$Reventless.kindTagKey + `:` + eventType + ` and move that fence`));
       DcbValidation$Reventless.validateCompositeReads(stateChangeSlices.map(Sc => [
         Sc.Spec.name,
         Sc.Spec.commandSchema,
@@ -335,7 +339,7 @@ function Make(DcbEventLogStorage) {
         log.error("Dcb_Builder", undefined, `DCB scope degraded (` + name + `): cross-partition reads of [` + effective.droppedCrossPartitionTagKeys.join(", ") + `] were derived but dropped — an ambiguous slice forced the boundary onto @crossPartition annotations that do not carry them. Slices referencing another entity by these keys will decide against an empty history and reject valid commands. Resolve: ` + effective.ambiguities.map(param => param[0] + ` (` + param[1] + `)`).join(" | "));
       }
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
-      let dcbEventLog = DcbEventLog.make(name, indexes$1, partitionTag, effectiveCrossPartitionTagKeys, DcbScopeInference$Reventless.pairFenceTypes(effective.crossPartitionPairs), opts);
+      let dcbEventLog = DcbEventLog.make(name, indexes$2, partitionTag, effectiveCrossPartitionTagKeys, DcbScopeInference$Reventless.pairFenceTypes(effective.crossPartitionPairs), opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));
       let commandSchema = Sury.json;
       let DcbCommandTopic = CommandTopic_Builder$ReventlessCore.Make({

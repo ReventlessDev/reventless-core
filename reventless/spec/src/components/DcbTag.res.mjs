@@ -59,6 +59,34 @@ function markDeclaredForKey(schema, key) {
   return Sury.$Metadata_set(markForKey(schema, key), dcbDeclaredTagId, true);
 }
 
+let dcbReadWholeId = Sury.$Metadata_Id_make("dcb", "readWhole");
+
+function readWhole(schema, eventTypes) {
+  return Sury.$Metadata_set(schema, dcbReadWholeId, eventTypes);
+}
+
+function wholeEventTypesOfSchema(schema) {
+  return Stdlib_Option.getOr(Sury.$Metadata_get(schema, dcbReadWholeId), []);
+}
+
+function kindTag(eventType) {
+  return {
+    key: DcbScopeInference$Reventless.kindTagKey,
+    value: eventType
+  };
+}
+
+function withKindTag(tags, eventType, indexedKeys) {
+  if (indexedKeys.includes(DcbScopeInference$Reventless.kindTagKey) && !tags.some(t => t.key === DcbScopeInference$Reventless.kindTagKey)) {
+    return tags.concat([{
+        key: DcbScopeInference$Reventless.kindTagKey,
+        value: eventType
+      }]);
+  } else {
+    return tags;
+  }
+}
+
 let string = Sury.$Metadata_set(Sury.string, dcbTagId, true);
 
 function stringForKey(key) {
@@ -652,11 +680,14 @@ function narrowEventTypesForTags(eventTypes, tags, tagKeysByEventType) {
   });
 }
 
-function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, payloadTagKeysOpt, pairEventTypesOpt) {
+function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, payloadTagKeysOpt, pairEventTypesOpt, wholeEventTypesOpt) {
   let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let payloadTagKeys = payloadTagKeysOpt !== undefined ? payloadTagKeysOpt : [];
   let pairEventTypes = pairEventTypesOpt !== undefined ? pairEventTypesOpt : ({});
+  let wholeEventTypes = wholeEventTypesOpt !== undefined ? wholeEventTypesOpt : [];
+  let whole = eventTypes.filter(t => wholeEventTypes.includes(t));
+  let byTags = eventTypes.filter(t => !wholeEventTypes.includes(t));
   let decidedBy = tags => tags.filter(tag => !payloadTagKeys.includes(tag.key));
   let splitPairs = qi => {
     let match = qi.tags;
@@ -703,7 +734,7 @@ function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt,
           value: tag.value
         }];
       return {
-        eventTypes: narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType),
+        eventTypes: narrowEventTypesForTags(byTags, clauseTags, tagKeysByEventType),
         tags: clauseTags
       };
     });
@@ -716,15 +747,36 @@ function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt,
             value: tag.value
           }];
         return {
-          eventTypes: narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType),
+          eventTypes: narrowEventTypesForTags(byTags, clauseTags, tagKeysByEventType),
           tags: clauseTags
         };
       }) : [{
-          eventTypes: narrowEventTypesForTags(eventTypes, tags$1, tagKeysByEventType),
+          eventTypes: narrowEventTypesForTags(byTags, tags$1, tagKeysByEventType),
           tags: tags$1
         }];
   }
-  return clauses.flatMap(splitPairs);
+  let clauses$1 = clauses.flatMap(splitPairs);
+  let tagged = clauses$1.some(qi => Stdlib_Option.mapOr(qi.tags, false, tags => Primitive_object.notequal(tags, [])));
+  if (whole.length === 0) {
+    return clauses$1;
+  }
+  let kinds = whole.map(t => ({
+    eventTypes: [t],
+    tags: [{
+        key: DcbScopeInference$Reventless.kindTagKey,
+        value: t
+      }]
+  }));
+  if (tagged) {
+    return clauses$1.concat(kinds);
+  } else if (byTags.length !== 0) {
+    return [{
+        eventTypes: byTags,
+        tags: []
+      }].concat(kinds);
+  } else {
+    return kinds;
+  }
 }
 
 function extractTaggedFields(schema) {
@@ -914,6 +966,15 @@ function lookupKeysOfProperties(properties) {
 }
 
 function eventShapesOfSchema(schema) {
+  let whole = wholeEventTypesOfSchema(schema);
+  let marked = e => {
+    if (!whole.includes(e.eventType)) {
+      return e;
+    }
+    let newrecord = {...e};
+    newrecord.whole = true;
+    return newrecord;
+  };
   let ofVariant = variantSchema => {
     switch (variantSchema.type) {
       case "string" :
@@ -940,14 +1001,18 @@ function eventShapesOfSchema(schema) {
         return;
     }
   };
+  let tmp;
   switch (schema.type) {
     case "object" :
-      return Stdlib_Option.mapOr(ofVariant(schema), [], s => [s]);
+      tmp = Stdlib_Option.mapOr(ofVariant(schema), [], s => [s]);
+      break;
     case "anyOf" :
-      return Stdlib_Array.filterMap(schema.anyOf, ofVariant);
+      tmp = Stdlib_Array.filterMap(schema.anyOf, ofVariant);
+      break;
     default:
-      return [];
+      tmp = [];
   }
+  return tmp.map(marked);
 }
 
 function extractPartitionTagFields(schema) {
@@ -1031,12 +1096,15 @@ function deriveEffectiveScope(slices) {
   let annotatedTagKeys = mergeTagKeysByEventType(producedSchemas.map(extractTagKeysByEventType));
   let inferred = DcbScopeInference$Reventless.infer(slices.map(sliceShape));
   let useInferred = inferred.ambiguities.length === 0;
+  let match = DcbScopeInference$Reventless.withWholeKinds(inferred.wholeEventTypes, annotatedCross, annotatedTagKeys);
+  let fallbackCross = match[0];
   return {
-    crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
-    tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys,
+    crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : fallbackCross,
+    tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : match[1],
     ambiguities: inferred.ambiguities,
     crossPartitionPairs: useInferred ? inferred.crossPartitionPairs : [],
-    droppedCrossPartitionTagKeys: useInferred ? [] : inferred.crossPartitionTagKeys.filter(k => !annotatedCross.includes(k))
+    wholeEventTypes: inferred.wholeEventTypes,
+    droppedCrossPartitionTagKeys: useInferred ? [] : inferred.crossPartitionTagKeys.filter(k => !fallbackCross.includes(k))
   };
 }
 
@@ -1240,6 +1308,8 @@ function getPartitionTagValue(query, pt) {
     })[0];
 }
 
+let kindTagKey = DcbScopeInference$Reventless.kindTagKey;
+
 export {
   tagSchema,
   partitionTagSchema,
@@ -1255,6 +1325,12 @@ export {
   markCrossPartition,
   markDeclared,
   markDeclaredForKey,
+  dcbReadWholeId,
+  readWhole,
+  wholeEventTypesOfSchema,
+  kindTagKey,
+  kindTag,
+  withKindTag,
   string,
   stringForKey,
   declared,

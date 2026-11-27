@@ -22,6 +22,7 @@ module Code = {
     | @as("no-partition-key") NoPartitionKey
     | @as("store-in-use") StoreInUse
     | @as("roles-unhonoured") RolesUnhonoured
+    | @as("whole-read-unwritten") WholeReadUnwritten
     | @as("unknown") Unknown
 
   let toString = (code: t): string => (code :> string)
@@ -55,6 +56,9 @@ type refusal =
   | StoreInUse({path: string, app: string, port: int, pid: int})
   /** A role is declared self-service or by invitation, and nothing here honours it. */
   | RoleUnhonoured({plugin: string, role: string, why: string})
+  /** A slice reads a kind whole (`@readWhole`) that no slice of its boundary writes, so no
+      event of it carries the kind tag. */
+  | WholeReadUnwritten({slice: string, eventType: string})
 
 /** One refused start: the findings of one check, and the component it refused. */
 type t = {
@@ -70,6 +74,7 @@ let code = (r: refusal): Code.t =>
   | NoPartitionKey(_) => NoPartitionKey
   | StoreInUse(_) => StoreInUse
   | RoleUnhonoured(_) => RolesUnhonoured
+  | WholeReadUnwritten(_) => WholeReadUnwritten
   }
 
 /** The slice a finding is about, for the findings that are about one. */
@@ -78,7 +83,8 @@ let slice = (r: refusal): option<string> =>
   | PartitionContradiction({slice})
   | PartitionUnreachable({slice})
   | ScopeContradiction({slice})
-  | NoPartitionKey({slice}) =>
+  | NoPartitionKey({slice})
+  | WholeReadUnwritten({slice}) =>
     Some(slice)
   | StoreInUse(_) | RoleUnhonoured(_) => None
   }
@@ -114,6 +120,8 @@ let describe = (r: refusal): string =>
   | StoreInUse({path, app, port, pid}) =>
     `refusing to reset ${path}: it is the store of ${app} running at :${port->Int.toString} (pid ${pid->Int.toString}). ` ++ `Stop that platform first, or start this one without ?reset.`
   | RoleUnhonoured({plugin, role, why}) => `${plugin}: ${role} ${why}`
+  | WholeReadUnwritten({eventType}) =>
+    `${eventType} is read whole, but no slice of the boundary writes it. Only a slice's append tags an event by its kind, so the read would find none: read it by its tags, or write it from a slice of this boundary.`
   }
 
 /** The message of the whole refusal, as the error carries it. One refused start
@@ -131,6 +139,7 @@ let message = (t: t): string => {
     `DCB partition contradiction (${component}): ${bySlice()}`
   | Some(ScopeContradiction(_)) => `DCB scope contradiction (${component}): ${bySlice()}`
   | Some(NoPartitionKey(_)) => `DCB partition key cannot be inferred — ${bySlice()}`
+  | Some(WholeReadUnwritten(_)) => `DCB whole read refused (${component}): ${bySlice()}`
   | Some(StoreInUse(_)) => t.refusals->Array.map(describe)->Array.join(" ")
   | Some(RoleUnhonoured(_)) =>
     `Admission this platform cannot honor — the people it is for could not get in:\n` ++
@@ -179,6 +188,10 @@ let refusalToJson = (r: refusal): JSON.t => {
       ("plugin", JSON.Encode.string(plugin)),
       ("role", JSON.Encode.string(role)),
       ("why", JSON.Encode.string(why)),
+    ]
+  | WholeReadUnwritten({slice, eventType}) => [
+      ("slice", JSON.Encode.string(slice)),
+      ("eventType", JSON.Encode.string(eventType)),
     ]
   }
   [
